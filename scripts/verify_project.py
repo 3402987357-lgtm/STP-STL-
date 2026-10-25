@@ -299,10 +299,33 @@ def _pid_alive(pid: int) -> bool:
             capture_output=True,
             text=True,
             timeout=10,
+            # 中文 Windows 的 tasklist 输出是 GBK 字节（「信息」= d0 c5）。
+            # text=True 不给编码时按**解释器首选编码**解码，PYTHONUTF8=1
+            # （UTF-8 模式）下就是 utf-8：0xd0 直接让 subprocess 的读取
+            # 线程抛 UnicodeDecodeError。那个异常不抛给调用方，而是让
+            # out.stdout 变成 None，后面 `str(pid) in None` 变 TypeError，
+            # 一次判活就把门禁打崩。所以这里钉死 cp936。
+            # 我不改用 locale.getpreferredencoding()：UTF-8 模式下它返回
+            # 的正是 utf-8，等于没修。errors="replace" 兜住罕见的非 GBK 字符。
+            encoding="cp936",
+            errors="replace",
         )
     except (OSError, subprocess.SubprocessError):
         return True  # 查不动就保守地当成还活着
-    return str(pid) in out.stdout
+    # 读取线程解码失败时 stdout 是 None，tasklist 查不动时是空串。
+    # 两种都说明我压根没拿到进程列表 —— 证明不了对方死了，就保守判活，
+    # 并且留一条警告让读日志的人知道这次判活没有证据支撑。
+    text = out.stdout or ""
+    if not text.strip():
+        import warnings
+
+        warnings.warn(
+            f"我拿不到 tasklist 的进程列表（pid={pid}），按保守方向判活、不接管锁。",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return True
+    return str(pid) in text
 
 
 def _holder_is_alive(root: str | Path = ROOT) -> bool:
