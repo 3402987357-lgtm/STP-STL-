@@ -1,0 +1,85 @@
+我方第一人称版 全模具批量 BOM 与多 Solid 拆分收口
+记录日期：2026-10-06
+
+一、本轮目标
+
+甲方原始任务书要求"自动解析模具装配体模型，识别所有零部件""不遗漏任何零件"
+"连续处理多套模具无崩溃、无内存泄漏"。此前正式输出只覆盖 BOTTLE 和 mould_04
+两套模具，其余 STEP 没有 BOM，而且"单个装配节点含多个 Solid"的模具会被压成
+一个零部件。
+
+二、我发现的真实缺陷
+
+1. RAR 附件未核验
+   - 桌面 915551d3-9d27-4671-80a0-c88b49071839.rar 是 RAR5 压缩包，
+     之前因为本机没有 7-Zip/WinRAR/UnRAR 而无法列出内部清单。
+   - 我改用 Windows 自带的 tar.exe（libarchive/bsdtar）成功列出清单，
+     确认压缩包内容与 data\raw\模具零件加工面智能拆解与分类(1) 完全一致：
+     8 个模具目录、10 个 STEP、4 个 PRT。原图未被修改。
+2. 多 Solid 复合体漏计零件
+   - MD270324.stp 含 363 个 MANIFOLD_SOLID_BREP，但 BOM 只报 1 个零部件。
+   - Plastic Bag Clip Mould.stp 含 42 个 Solid，只报 1 个。
+   - revised_mould_oct19.stp 含 16 个 Solid，只报 1 个。
+   - mould_04 的 component_0014（3 Solid）、component_0026（2 Solid），以及
+     VN_Plastic injection mould 的 component_0001（3 Solid）也没有拆开。
+   - 根因：我此前只按 XCAF 装配节点计量，装配节点内部的多 Solid 复合体被当成
+     一个零部件，直接违反"不遗漏任何零件"。
+3. 批量脚本内存探针失效
+   - 我第一版 scripts\run_bom_batch.py 的 GetProcessMemoryInfo 调用没有声明
+     argtypes/restype，返回值一直是 0，RSS 恒为 None，拿不到"无内存泄漏"的证据。
+
+三、我完成的改进
+
+1. 新增 scripts\run_bom_batch.py
+   - 递归发现一个目录下所有 .stp/.step，逐套解析、逐套落盘、逐套记录耗时和 RSS。
+   - 任何一套失败只写入汇总，不中断后续模具，并保留失败原因。
+   - 输出 outputs\bom_batch\<模具名>\<模具名>.bom.{json,csv,xlsx} 和
+     bom_batch_summary.{json,csv}。
+2. src\cad_inspector\io\step_bom.py 新增逐 Solid 拆分
+   - 新增 _iter_solid_shapes 和 _expand_multi_solid_groups。
+   - 当一个装配节点的 Shape 含多个 Solid 时，按 Solid 拆成多个 BOM 零部件，
+     每个拆分件有独立参考 Shape 编号（label:N#solid_00X）。
+   - 报告写入 multi_solid_group_count、multi_solid_split_component_count、
+     solid_split_policy=ONE_BOM_COMPONENT_PER_SOLID，并追加中文警告。
+3. 测试
+   - tests\test_step_bom_ocp.py 新增 2 个测试：多 Solid 复合体拆成 3 个计量单元；
+     单 Solid 节点不拆分。
+
+四、批量结果
+
+10 个 STEP 全部 BASELINE、0 失败：
+BOTTLE 2、2x4 bottom 1、2x4 top 1、revised_mould_oct19 16、MD270324 363、
+Plastic Bag Clip Mould 42、juice bottle mold 1、juice bottle 1、mould_04 48、
+VN_Plastic injection mould 35；合计 510 个零部件。
+拆分前同样 10 个文件只有 85 个零部件，漏计 425 个。
+
+五、性能与内存
+
+1. 单套耗时：最快 0.2s，最慢 41.3s，全部小于任务书要求的 3 分钟。
+2. 连续 10 套总耗时：空闲机器 78.2s；与其它进程争用 CPU 时为 186.5s。
+3. 进程 RSS：首套加载 OCCT 后升到约 233MB，之后 9 套在 233-286MB 之间波动，
+   没有单调持续增长；但这只能说明当前快照没有明显泄漏，不等于长时间压力测试通过。
+
+六、验证
+
+1. 全量无缓存 pytest：245 passed。
+2. tests\test_formal_output_contract.py：3 passed。
+3. compileall 退出码 0；pip check 返回 No broken requirements found。
+4. outputs 审计：70 个文件、66 有效、0 损坏、4 跳过（PNG/HTML 可视化）、status=PASS。
+5. 统一门禁 scripts\verify_project.py：status=PASS。
+6. 清理：可再生成输出 1 项（229,957 字节），项目缓存 0。
+
+七、我保留的限制
+
+1. 99% 准确率、1% 漏检率仍没有甲方标注集，不能宣称验收通过。
+2. XT/PRT 原生解析仍未实现；本轮只证明 RAR 内的 STEP 可以批量处理。
+3. 逐 Solid 拆分依据几何，不等价于人工确认的装配语义；同一 Solid 内的多 Shell
+   （例如 BOTTLE component_0001 为 1 Solid/14 Shell）不拆分。
+4. RSS 波动只能说明当前快照没有明显泄漏，不等于长时间压力测试通过。
+5. 本目录仍有并行写入者，结论只对当前快照成立。
+
+八、后续 AI 关键词
+
+全模具批量、run_bom_batch、多 Solid 拆分、ONE_BOM_COMPONENT_PER_SOLID、
+不遗漏任何零件、RAR5、bsdtar、连续处理多套模具、RSS、mold-bom-1.7、
+BASELINE、REVIEW_REQUIRED、XT/PRT、甲方标注集。

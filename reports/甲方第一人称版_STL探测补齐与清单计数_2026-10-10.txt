@@ -1,0 +1,120 @@
+我方核对四个区域 CLI 输出，发现 STL 全部探不了并补齐它
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我上一轮说要做什么
+
+上一轮我说下一步去核对四个区域 CLI 的输出内容正确性——尤其
+`visualize --regions` 那条没走过的路径，以及 dataset 登记的 42 个样本
+是否与目录实际文件数对得上。
+
+这一轮我做了前者的一半：**dataset 的输出核对**，结果查出一个实质缺陷。
+（`visualize --regions` 我仍然没走，见限制 3。）
+
+二、核对结果：数量对得上，但一半样本没有实体信息
+
+目录实际文件：21 个 `.stp` + 21 个 `.stl` = 42 个。manifest 记录 42 条，
+每条有独立 `sample_id` 与 sha256——**数量对得上**。
+
+但按格式交叉统计探测状态：
+
+    格式 x 探测: {('STL', 'UNSUPPORTED'): 21, ('STEP', 'COMPLETE'): 21}
+
+**21 个 STL 全部 UNSUPPORTED**，code 是 `STL_BACKEND_NOT_IMPLEMENTED`
+（"STL 将在后续网格区域处理，当前阶段只识别扩展名"）。
+
+而 `dataset_cli` 的 docstring 白纸黑字写着：
+
+> 我方离线扫描 STEP、XT、PRT 和 **STL** 样本并生成数据清单。
+
+也就是说它**声称支持 STL，实际一个都探不了**，清单里一半的样本只有
+路径和 sha256、没有任何实体信息。
+
+三、我怎么补的
+
+项目里 `load_stl` 和 `mesh_quality_report` 早就有了，能给出真实顶点数、
+三角面数与网格质量指标。我新增 `probe_stl()`，只做编排、不重新实现解析：
+
+- 调 `load_stl` 读网格，调 `mesh_quality_report` 取质量
+- 填 `entity_counts`：vertex_count / triangle_count / degenerate_triangle
+  _count / non_manifold_edge_count / boundary_edge_count /
+  isolated_vertex_count
+- 退化面与非流形边照实报成 WARNING issue，但**不据此改判 status**
+  （探测阶段只回答"值不值得继续"）
+- 解析失败返回 FAILED + `STL_PARSE_FAILED`，绝不伪造成功
+
+**我刻意没动 XT / PRT**：那两种确实需要已授权的 Parasolid / NX 适配器，
+伪造解析成功比报 UNSUPPORTED 更糟。只有 STL 是本仓库自己就能读的。
+
+四、补完之后：42/42 全部真正探测成功
+
+    格式 x 探测: {('STL', 'COMPLETE'): 21, ('STEP', 'COMPLETE'): 21}
+
+实测真实计数（`测试集/1`）：
+
+    .stl: vertex_count=126620  triangle_count=253236
+          degenerate_triangle_count=0  non_manifold_edge_count=0
+          boundary_edge_count=0        isolated_vertex_count=0
+    .stp: CARTESIAN_POINT=64274  ADVANCED_FACE=67  EDGE_CURVE=258
+          OPEN_SHELL=1  VERTEX_POINT=192  ...
+
+五、我踩的一个坑（自己的回归）
+
+我算出计数后，发现 **manifest 里看不到**——`build_manifest` 原先只取
+`probe_any().status`，把 `entity_counts` 全丢了。我给 `DatasetRecord`
+加了 `entity_counts` 字段并填上。
+
+然后 CSV 写出**直接崩了**：
+
+    [ERROR] 我方生成数据清单失败：dict contains fields not in fieldnames:
+            'entity_counts'
+
+因为我加了字段却没同步 CSV 的 `fieldnames`，而且 dict 不能直接进 CSV
+单元格。修法：把 `entity_counts` 加进 fieldnames，并在写行时摊平成
+`k=v` 文本（排序后拼接，保证两次运行输出一致）。
+
+**这个错误是我自己引入的，不是既有缺陷。** 我加字段时没有想到 CSV 那条
+路径，是靠跑一遍端到端才发现的——光看单元测试不会暴露。
+
+六、我执行的验证
+
+- dataset 端到端：42 个样本，exit=0，JSON 与 CSV 都写出。
+- 两类格式的 `entity_counts` 均非空（数字见上）。
+- CSV 表头含 `entity_counts`，首行值为
+  `boundary_edge_count=0 degenerate_triangle_count=0 ... vertex_count=126620`。
+- 新增用例：STL 真正解析出网格计数而不是只认扩展名（断言 status 为
+  COMPLETE、vertex_count>0、triangle_count>0、backend_required 为 False）。
+  `tests\test_step_probe.py` -> 7 passed。
+- 全量回归：**474 passed in 297.03s**；`compileall` 退出码 0。
+
+七、当前权威状态（修补部分未变）
+
+11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**，分母完整。
+`训练集/1` 四条路全无效、`训练集/4` 我主动不动它。
+**任务书 92% 仍未达成。**
+
+八、我保留的限制
+
+1. 任务书 92% 未达成（81.8%），卡点唯一是 `训练集/1`。
+2. **`visualize --regions` 那条路径我仍然没走**——上一轮说要验，这轮
+   被 dataset 的发现岔开了。它仍属未验证。
+3. 我只核对了 **dataset 一个** CLI 的输出内容（42 条数量 + 实体计数），
+   feature-classify 与 visualize 的**输出内容正确性我没核对**——
+   feature 的分类结果准不准、visualize 画出来的图对不对，我没查。
+4. manifest 的 `dataset_split` 全是 `unassigned`、`label_status` 全是
+   `unknown`（42/42）。dataset CLI **不做自动划分与标注**，这两列目前
+   没有信息量。我没有改它。
+5. 我把同一模型的 `.stp` 与 `.stl` 登记成**两个独立样本**（各自有独立
+   sample_id）。实测没有跨 split 泄漏（split 全是 unassigned），但将来
+   真做划分时这里**有泄漏风险**——同一模型的两种格式可能落进 train/test
+   两边。我没有处理。
+6. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+7. 合成基准 `测试集/8#face3` 我没修好；合成 `case_count` 14→17 未查明。
+8. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+9. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+代码位置：`src\cad_inspector\io\step_probe.py`（新增 `probe_stl`）、
+`src\cad_inspector\domain\dataset.py`（新增 `entity_counts` 字段）、
+`src\cad_inspector\io\dataset_manifest.py`（填上计数）、
+`src\cad_inspector\output\parting_report.py`（CSV fieldnames + 摊平）；
+用例：`tests\test_step_probe.py`。

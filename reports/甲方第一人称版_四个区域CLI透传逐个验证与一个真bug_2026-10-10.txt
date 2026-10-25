@@ -1,0 +1,92 @@
+我方逐个验证四个区域 CLI 的透传，并修掉一个真 bug
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我上一轮留了什么没做完
+
+上一轮我把四个区域 CLI（bom / dataset / feature-classify / visualize）
+接到了主 CLI，但**只验证了 bom 一个的透传**，另外三个只验证了"子命令
+注册成功"。我在报告里自己写了：
+
+> 只验证 bom 一个就声称"四个都接好了"是不扎实的
+
+这一轮我逐个验证，**结果发现 visualize 根本调不通**。
+
+二、发现的真 bug：visualize 永远调不通
+
+    $ python -m cad_inspector visualize --before 训练集/8.stp ...
+    cad-inspector: error: unrecognized arguments: --before
+
+**原因**：argparse 的 `REMAINDER` 只在遇到第一个**位置参数**之后才开始
+收集剩余项。而 `visualize` 的唯一必填参数 `--before` 是一个**选项**：
+
+- `bom <step> --output-dir X` —— 以位置参数开头 → 透传正常
+- `dataset <root> --output X` —— 以位置参数开头 → 透传正常
+- `feature-classify <input> ...` —— 以位置参数开头 → 透传正常
+- `visualize --before X` —— **以选项开头** → 主 parser 先尝试解析
+  `--before`、不认识就报错，透传直接断掉
+
+也就是说：**visualize 它唯一的必填参数就走不通，所以它根本没法用。**
+我上一轮说"四个都接好了"是错的。
+
+三、修法：在 parse_args 之前就分发，绕开 argparse
+
+    delegated = {"bom": bom_main, "dataset": dataset_main,
+                 "feature-classify": feature_main, "visualize": visualization_main}
+    argv_list = list(sys.argv[1:] if argv is None else argv)
+    if argv_list and argv_list[0] in delegated:
+        return int(delegated[argv_list[0]](argv_list[1:]))
+
+我把分发移到 `parse_args` **之前**。这样四种开头方式（位置参数、选项、
+混合）都能正确处理。
+
+顺带删掉了移走后**永不可达**的那段 dispatch 分支——留着只会让后来人
+以为分发在两处发生。
+
+四、四个 CLI 逐个端到端验证（全部 exit=0）
+
+| 命令 | 我传的参数 | 结果 |
+|---|---|---|
+| dataset | `<目录> --output manifest.json` | 登记 42 个样本，产出 JSON+CSV |
+| feature-classify | `<step> --output features.json --tolerance-deg 20` | `[BASELINE] 我方完成特征识别` |
+| visualize | `--before <step> --output-dir X --title ... --dpi 90` | 产出 HTML + 对比图 |
+| bom | `<step> --output-dir X` | 见上一轮（报错方是 bom_cli 自己） |
+
+缺参数时的报错方也逐个确认过，都是各自 CLI 自己报 usage：
+
+    dataset          -> error: the following arguments are required: root
+    feature-classify -> error: the following arguments are required: input
+    visualize        -> error: the following arguments are required: --before
+    bom              -> error: the following arguments are required: step
+
+五、我执行的验证
+
+- 新增用例：以选项开头的区域命令也能透传（钉住 visualize 这个 bug：
+  断言报错方含 `--before`，且**不含** `unrecognized arguments`——后者
+  出现就说明没绕开 argparse）。`tests\test_cli_commands.py` -> 6 passed。
+- 全量回归：**471 passed in 339.84s**；`compileall` 退出码 0。
+
+六、当前权威状态（修补部分未变）
+
+11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**，分母完整。
+`训练集/1` 四条路全无效、`训练集/4` 我主动不动它。
+**任务书 92% 仍未达成。**
+
+七、我保留的限制
+
+1. 任务书 92% 未达成（81.8%），卡点唯一是 `训练集/1`。
+2. 我只做了**端到端跑通**验证（退出码 0、产出文件存在），**没有核对
+   四个区域 CLI 各自输出内容的正确性**——比如 dataset 登记的 42 个样本
+   对不对、feature-classify 的分类结果准不准，我没查。
+3. `visualize` 我跑出来 `regions=0`（没传 `--regions`），所以它只画了
+   模型对比图、**没有画区域标注**，这条路径我没验证。
+4. 四个区域 CLI 里有三个（bom/dataset/feature-classify）在此之前
+   **从未被端到端跑过**——它们引用数为 0 意味着可能长期没人验过。
+   我只验了这一轮的正常路径，异常路径没覆盖。
+5. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+6. 合成基准 `测试集/8#face3` 我没修好；合成 `case_count` 14→17 未查明。
+7. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+8. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+代码位置：`src\cad_inspector\cli.py`（parse_args 前分发 + 删死分支）；
+用例：`tests\test_cli_commands.py`。

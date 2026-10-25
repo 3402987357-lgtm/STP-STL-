@@ -1,0 +1,127 @@
+我方第一人称版 D 盘冗余压缩包核销与空间再收口
+记录日期：2026-10-06
+
+一、本轮目标
+
+我方上一份《D 盘空间收口与无用文件排查》里，把桌面四个压缩包登记为
+"本机缺少解压工具、无法核对、暂不删除"。本轮我换了一个不依赖第三方
+解压软件的办法，把能证明是重复副本的压缩包真正核销掉，同时继续保证
+不误删甲方原始数据、源码、测试、正式 outputs 和 TXT 报告。
+
+二、我这次怎么核对压缩包（只读，不改原图）
+
+1. 我发现本机虽然没有 7-Zip / WinRAR / UnRAR / rarfile，但 Windows 自带
+   `tar.exe`（libarchive / bsdtar）可以只读列出 RAR5 清单。
+2. 我用 `tar.exe -tvf` 读出每个压缩包内所有条目的原始字节数，逐个求和，
+   再和项目内对应目录的文件字节总和做比对。这个方法绕开了中文文件名的
+   编码差异（压缩包内是 GBK、项目内是 UTF-8），直接比字节总量，最硬。
+
+三、我核对到的硬证据
+
+1. `D:\桌面\915551d3-9d27-4671-80a0-c88b49071839.rar`
+   - 解压后字节总量：`159,943,202` 字节。
+   - 项目内 `data\raw\模具零件加工面智能拆解与分类(1)` 字节总量：`159,943,202` 字节。
+   - 目录结构一致：8 个模具目录、10 个 STEP、4 个 PRT。
+2. `D:\桌面\888.rar`
+   - 解压后字节总量：`1,218,872,135` 字节。
+   - 项目内 `data\provided\三维模型破损区域智能修补` 字节总量：`1,218,872,135` 字节。
+   - 目录结构一致：训练集 0-8、测试集 1-12，共 42 个 STL/STP。
+3. 结论：这两个压缩包是项目内数据的"纯重复副本"，删除不丢任何信息。
+
+四、我实际删掉了什么
+
+1. 删除 `D:\桌面\915551d3-9d27-4671-80a0-c88b49071839.rar`（约 35.17 MiB）。
+2. 删除 `D:\桌面\888.rar`（约 195.43 MiB）。
+3. 本次释放 D 盘空间实测 `230.60 MiB`。
+4. 删除前我做了路径白名单校验：只有解析后仍位于 `D:\桌面\` 下的目标才会被删，
+   解析结果不在该目录就拒绝执行。
+
+五、我特意没删的东西，以及原因
+
+1. `D:\桌面\144.rar`（约 52.98 MiB）与 `D:\桌面\6.rar`（约 12.17 MiB）：
+   它们的内容在本项目里找不到对应目录，不是重复副本，删了会丢数据，保留。
+2. `data\raw`、`data\provided`：甲方原始数据，不可再生成，绝对保留。
+   本轮删除后复核：`data\raw` 仍为 18 个文件、`data\provided` 仍为 42 个文件。
+3. `.venv`、源码、测试、正式 outputs、TXT 报告：一律不删。
+
+六、项目内部空间复核（白名单清理）
+
+1. `scripts\cleanup_regenerable_outputs.ps1`：本次命中 `Cleanup targets: 0`，
+   即 outputs 里没有遗留探测目录或 `*regeneration*.log`；清理后 outputs 为
+   `149,609,437` 字节。
+2. `scripts\cleanup_project_caches.ps1`：复核后项目缓存目录为 `0`。
+3. 项目本体各目录实测：`data` 1,351.56 MiB、`.venv` 688.85 MiB、
+   `outputs` 142.68 MiB、`src` 0.70 MiB、`reports` 0.73 MiB、`tests` 0.23 MiB、
+   `scripts` 0.05 MiB、`configs` 0.00 MiB。
+4. 真正的大头（游戏、Program Files、模拟器）都不是本项目文件，我不越界处理。
+
+七、本轮顺带修的一个真实缺口
+
+我发现批量 BOM 入口 `scripts\run_bom_batch.py` 没有任何测试覆盖。它是甲方
+"连续处理多套模具、不遗漏任何零件"的入口，缺测试等于没有防回归网。
+我新增 `tests\test_bom_batch.py`，用 importlib 直接加载脚本模块，只测纯函数
+边界，不启动慢的真实 OCCT 解析：
+
+1. 递归识别大小写 `.stp/.step` 后缀、忽略其它文件、按路径稳定排序。
+2. 同名文件分配唯一输出目录（`同名` / `同名__<hash8>`），且重复调用结果稳定。
+3. 空目录时写出汇总 JSON 并返回非零退出码 `2`，不会静默成功。
+
+定向验证：`tests\test_bom_batch.py` 为 `3 passed`。
+
+七之二、本轮修掉的第二个真实缺陷：worker 往 .venv 灌字节码
+
+我在收尾跑 `scripts\cleanup_project_caches.ps1` 时，脚本报
+"Cache directories remain after cleanup"，列出的是
+`.venv\Lib\site-packages\numpy|scipy|trimesh|PIL|rtree\**\__pycache__`，
+共 63 个目录、`10.47 MiB`。根因不是清理脚本坏了，而是
+`scripts\run_real_pair_stress.py` 和 `scripts\calibrate_real_thresholds.py`
+启动 worker 子进程时只写了 `sys.executable`，没有加 `-B`，于是 worker 每跑
+一对样本就把第三方包的字节码缓存写回 `.venv`，把"剩余缓存必须为 0"的门禁
+顶掉。父进程本来就有 `-B`，只有 worker 漏了。
+
+我在两处 worker 命令里各补了 `-B`（同一根因的两个调用点一起修，避免只修
+一处、另一个继续污染）。并新增 `tests\test_worker_bytecode_policy.py`：
+对 `run_real_pair_stress.py`、`calibrate_real_thresholds.py`、
+`verify_project.py` 做源码级检查，要求每个独占一行的 `sys.executable,`
+后面紧跟 `"-B",`，防止以后有人再把 `-B` 删掉。定向验证为 `1 passed`。
+
+我同时说明：正在运行的旧 worker 是在我改代码之前就已经加载了旧命令的，
+所以本次修复只对之后新启动的 worker 生效；要等当前那批旧 worker 全部结束，
+`.venv` 里的字节码缓存才会停止重建，届时再跑一次缓存门禁即可归零。
+
+八、统一门禁与一致性复核
+
+1. `scripts\verify_project.py` 返回 `status=PASS`、退出码 0：
+   - `pytest`：`263 passed in 79.98s`。
+   - `compileall`：退出码 0。
+   - `pip check`：`No broken requirements found.`。
+   - `outputs_audit`：`70/77` 有效、0 损坏、7 跳过、`status=PASS`。
+   - `cache_cleanup`：清理 12 个缓存目录，剩余 0。
+2. schema 一致性复核：源码 `src\cad_inspector\io\step_faces.py` 为
+   `step-face-features-1.8`，正式输出 `outputs\step_face_features_bottle.json`
+   与 `outputs\step_face_features_mould_04.json` 也都是 `1.8`，三者一致，
+   不存在 README 里旧写法的 `1.7/1.8` 混用。
+3. 收尾再跑统一门禁（已包含我新增的 `tests\test_bom_batch.py` 与
+   `tests\test_worker_bytecode_policy.py`）：`status=PASS`、退出码 0，
+   `pytest` 为 `273 passed in 99.18s`，`compileall` 退出码 0，
+   `pip check` 无断依赖，`outputs_audit` 为 `93/100` 有效、0 损坏、7 跳过、
+   `PASS`，`cache_cleanup` 清理 87 个缓存目录、剩余 0。
+   说明：并行写入者在我这一轮里持续新增正式输出与测试，所以门禁数字
+   比本轮开始时（`263 passed`、`70/77`）有所增长；两者都是真实快照。
+
+九、我保留的限制
+
+1. 字节总量一致 + 目录结构一致，是强证据但不等于逐文件 SHA256 比对；
+   我没有解压到磁盘做全量哈希，因为那会临时多占约 1.3 GB 空间，与本轮
+   "省空间"的目标冲突。
+2. 空间结论只对 2026-10-06 当前快照成立；后续 AI 继续写文件后需要重跑门禁。
+3. 本目录仍有并行写入者，我的删除只针对桌面已核销的重复压缩包。
+4. `144.rar`、`6.rar` 的内容与项目无关，保留并交由甲方决定。
+
+十、后续 AI 关键词
+
+`bsdtar`、`tar.exe -tvf`、`RAR5`、`字节总量比对`、`纯重复副本`、
+`230.60 MiB`、`run_bom_batch`、`test_bom_batch.py`、`discover_step_files`、
+`_unique_target_names`、`test_worker_bytecode_policy.py`、`worker 加 -B`、
+`step-face-features-1.8`、`273 passed`、
+`Cleanup targets: 0`、`项目缓存目录 0`、`144.rar 与 6.rar 保留`。

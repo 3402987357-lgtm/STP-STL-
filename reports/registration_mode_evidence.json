@@ -1,0 +1,139 @@
+{
+  "schema_version": "registration-mode-evidence-1.0",
+  "parts": 21,
+  "best_mode_counts": {
+    "none": 21,
+    "centroid": 0,
+    "pca": 0
+  },
+  "parts_where_centroid_is_best": 0,
+  "conclusion": "21/21 个真实件的原始位姿(none)残差都低于 centroid 与 pca；固定 centroid 会把整张表面推开，默认改为 auto（三选一取最小，不含 icp）。",
+  "rows": [
+    {
+      "pair": "训练集/0",
+      "none": 0.2144,
+      "centroid": 0.4735,
+      "pca": 0.7012
+    },
+    {
+      "pair": "训练集/1",
+      "none": 0.5459,
+      "centroid": 1.9989,
+      "pca": 1.7522
+    },
+    {
+      "pair": "训练集/2",
+      "none": 0.1381,
+      "centroid": 1.334,
+      "pca": 1.1341
+    },
+    {
+      "pair": "训练集/3",
+      "none": 0.213,
+      "centroid": 0.342,
+      "pca": 0.5144
+    },
+    {
+      "pair": "训练集/4",
+      "none": 0.1036,
+      "centroid": 0.3177,
+      "pca": 0.4316
+    },
+    {
+      "pair": "训练集/5",
+      "none": 0.1545,
+      "centroid": 0.3893,
+      "pca": 0.4105
+    },
+    {
+      "pair": "训练集/6",
+      "none": 0.2304,
+      "centroid": 0.9622,
+      "pca": 0.9956
+    },
+    {
+      "pair": "训练集/7",
+      "none": 0.0983,
+      "centroid": 0.4904,
+      "pca": 0.4765
+    },
+    {
+      "pair": "训练集/8",
+      "none": 0.0454,
+      "centroid": 0.1698,
+      "pca": 0.1711
+    },
+    {
+      "pair": "测试集/1",
+      "none": 0.0943,
+      "centroid": 0.3679,
+      "pca": 0.3721
+    },
+    {
+      "pair": "测试集/2",
+      "none": 0.0715,
+      "centroid": 0.2224,
+      "pca": 0.2383
+    },
+    {
+      "pair": "测试集/3",
+      "none": 0.1735,
+      "centroid": 0.412,
+      "pca": 0.4089
+    },
+    {
+      "pair": "测试集/4",
+      "none": 0.171,
+      "centroid": 0.2931,
+      "pca": 0.7999
+    },
+    {
+      "pair": "测试集/5",
+      "none": 0.0734,
+      "centroid": 0.1291,
+      "pca": 0.1788
+    },
+    {
+      "pair": "测试集/6",
+      "none": 0.0357,
+      "centroid": 0.0923,
+      "pca": 0.1319
+    },
+    {
+      "pair": "测试集/7",
+      "none": 0.0659,
+      "centroid": 0.1889,
+      "pca": 0.221
+    },
+    {
+      "pair": "测试集/8",
+      "none": 0.1005,
+      "centroid": 0.522,
+      "pca": 0.5814
+    },
+    {
+      "pair": "测试集/9",
+      "none": 0.0391,
+      "centroid": 0.0901,
+      "pca": 0.1675
+    },
+    {
+      "pair": "测试集/10",
+      "none": 0.0673,
+      "centroid": 0.2478,
+      "pca": 0.3855
+    },
+    {
+      "pair": "测试集/11",
+      "none": 0.4859,
+      "centroid": 2.307,
+      "pca": 1.7408
+    },
+    {
+      "pair": "测试集/12",
+      "none": 0.2123,
+      "centroid": 0.967,
+      "pca": 0.8145
+    }
+  ]
+}

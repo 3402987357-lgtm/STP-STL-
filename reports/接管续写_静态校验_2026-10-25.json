@@ -1,0 +1,22 @@
+{
+  "syntax": {
+    "checked_files": 201,
+    "errors": []
+  },
+  "comment_ratio": {
+    "target": 0.25,
+    "line_ratio_strict": 0.264564,
+    "line_ratio_with_inline": 0.265577,
+    "total_lines": 43430,
+    "strict_comment_lines": 11490,
+    "definition_docstring_coverage": 1.0,
+    "module_docstring_coverage": 1.0
+  },
+  "outputs_audit": {
+    "status": "PASS",
+    "total_files": 937,
+    "valid_files": 933,
+    "invalid_files": 0,
+    "skipped_files": 4
+  }
+}

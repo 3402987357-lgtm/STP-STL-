@@ -1,0 +1,126 @@
+
+
+===== 开发记录 2026-10-06T23:18:56+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=294 passed in 128.98s (0:02:08)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=215/222 有效、0 损坏、7 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-06T23:27:04+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 1 个项目缓存目录。；pytest=300 passed in 102.65s (0:01:42)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=222/229 有效、0 损坏、7 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-07T18:09:28+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 2 个项目缓存目录。；pytest=311 passed in 30.48s；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=195/203 有效、0 损坏、8 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-07T18:20:13+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=314 passed in 26.68s；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/226 有效、0 损坏、25 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-07T18:46:59+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=314 passed in 31.33s；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=203/255 有效、0 损坏、52 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-08T16:51:38+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=317 passed in 64.00s (0:01:03)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=199/245 有效、0 损坏、46 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-08T17:19:11+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=324 passed in 29.52s；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=199/248 有效、0 损坏、49 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-08T17:29:57+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=325 passed in 69.72s (0:01:09)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=199/248 有效、0 损坏、49 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-08T21:22:04+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=353 passed in 44.29s；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/267 有效、0 损坏、66 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。

@@ -1,0 +1,59 @@
+我方修掉一个**偶发测试失败的根因**：8 个测试共用固定输出路径
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、现象
+
+跑全套时 `test我方三角化补面能补上非平面的洞` 偶发失败：
+63 passed / 1 failed，断言 `assert out.exists(), "我方应当写出修补结果"`。
+单独重跑却 pass。
+
+二、根因（我查了源码，不是猜）
+
+    out = Path("outputs/_probe") / "tri_test" / "repaired.step"
+    if out.exists():
+        out.unlink()
+    result = repair_step_holes(candidate, output_path=out, config=config)
+    ...
+    assert out.exists(), "我方应当写出修补结果"
+
+**它用的是固定共享路径，不是 pytest 的 `tmp_path`。** 我统计过：
+`tests\test_step_repair_sampling.py` 里**共有 8 个测试**都往
+`outputs/_probe/` 下写固定路径——guard.stp、fallback.stp、already_sealed、
+valid_regression、invalid_input_healed、nonplanar、tri_test、upgrade。
+
+**并发跑同一个测试文件时，一个进程刚 unlink、另一个正好在断言
+`out.exists()`，就偶发转红。** 这正对应我观察到的失败时机（当时机器上有
+并发 pytest）。
+
+三、我怎么改的
+
+把这 8 个测试改成用 `tmp_path`：**7 个函数签名**加 `tmp_path: Path`
+（第 8 个我先前已改），**8 处路径**从 `outputs/_probe/...` 换成 `tmp_path / ...`。
+
+我为什么敢改：这 8 处都是"**自己 unlink + 自己断言**"，**没有任何一处**
+依赖文件留在原处给后续用例用，所以换成 tmp_path **不改变语义**。
+
+改后复查：**`_probe` 引用剩余 0 行**。
+
+四、验证（三层，都过了）
+
+    1 单文件        tests/test_step_repair_sampling.py  -> **31 passed**
+    2 **并发压测**  同一文件**同时跑两遍**              -> **31 passed + 31 passed**
+    3 全套          五个测试文件                        -> **64 passed**
+
+第 2 项是关键：那正是改动前会失败的并发场景，改后两个进程都全绿。
+
+五、这一改动的性质
+
+**只动测试隔离，不动任何生产逻辑**（没碰 repair.py / step_hole.py /
+benchmark）。成绩不受影响：真实 10/11、合成 17/20 均未变。
+
+六、限制
+
+1. 并发压测我只跑了**两遍**（两个进程）。要更彻底可加大并发数，我没做。
+2. 我只改了 `test_step_repair_sampling.py` 这**一个文件**。其它测试文件里
+   是否还有同类固定路径（比如 `test_desktop_ui.py` 也用到 `outputs/_probe/ui`）
+   **我没有改、也没有逐一排查**。
+3. 偶发失败**本质上无法被一次运行证伪**——我只能说"在两进程并发下没复现"，
+   不能保证彻底消除。

@@ -1,0 +1,93 @@
+我方两套基准质量口径统一记录
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我此前给真实件基准加了 `brep_valid` 字段（写出文件重读后做 BRepCheck），
+但**合成基准路径没有这个字段**。后果是两套基准的质量口径不一致：
+合成基准报"14/14 全闭合"、真实件报"9/11"，这两个数字**不能直接横向
+比较**——因为合成那边根本没有"有没有补坏"这一项。
+
+这一轮我把它补上，让两套基准看同一项质量指标。
+
+二、我怎么做的（最小改动）
+
+1. 抽出共用函数 `brep_valid_of_written_file(path)`：回读写出的 STEP，
+   做 `BRepCheck_Analyzer(st).IsValid()`。异常一律吞掉留 None（回读失败
+   不等于修补失败，只表示这项指标没测到）。
+2. `run_case`（合成路径）与 `run_real_case`（真实件路径）**都调它**，
+   真实件路径原本那段重复实现删掉了。
+3. `aggregate` 新增四项汇总：
+   - `brep_valid_true_count` / `brep_valid_false_count` /
+     `brep_valid_untested_count`
+   - **`closed_and_valid_count`**：闭合的那批里有多少是真正有效的几何。
+     这是唯一能同时回答"补没补上"与"有没有补坏"的数字。
+
+三、立刻暴露出一个此前被掩盖的问题
+
+合成基准补上该字段后，**不再是 100% 全好**：
+
+    case_count:            17
+    hole_closed_count:     15      hole_closed_ratio: 0.882353
+    output_written_count:  17
+    brep_valid_true_count:  16
+    brep_valid_false_count:  1     <- 有一个输出是坏几何
+    closed_and_valid_count: 15
+
+那个坏的是 **`测试集/8#face3`**：
+
+    hole_closed=False  brep_valid=False  repair_status=REVIEW_REQUIRED
+    output_solid_count=1
+
+**它能被写出来，是因为合成模式我没开 `--do-no-harm`。** 真实件模式我
+是开着跑的，所以坏件会被不伤害保护删掉；合成模式默认关着，坏文件就
+留在了输出里。
+
+也就是说：我此前报的"合成基准 14/14 = 100%"里，**可能一直藏着坏输出**，
+只是没有字段能看出来。现在能看到了。
+
+四、我这轮没有做的事（以及为什么）
+
+1. **我没有改合成基准默认开 `--do-no-harm`**。改了会让
+   `output_written_count` 从 17 降到 16，这是**更诚实**的做法，但它会
+   改变既有基准的行为，属于策略变更，需要甲方确认。我只把事实暴露
+   出来，不改默认。
+2. **我没有修 `测试集/8#face3` 这个坏输出**。它是"合成造洞后补面失败"
+   的个案，且它本来就被标了 `REVIEW_REQUIRED`——修补器自己已经知道
+   这是候选不是成品，只是合成模式没开保护所以写出来了。修它是另一个
+   任务。
+3. **`case_count` 从 14 变成了 17，我没有查明原因**。我这次的改动只
+   加了字段，不影响用例数量，所以这不是我改出来的。可能来自数据集
+   或 face-counts 的既有差异。我如实记下"未查明"，不猜。
+
+五、我执行的验证
+
+- 合成基准（补字段后）：aggregate 输出见上，`brep_valid_*` 与
+  `closed_and_valid_count` 四项均有值。
+- 全量回归：**445 passed in 405.90s**；`compileall` 退出码 0。
+
+六、当前权威状态（与上一轮一致，未变）
+
+- 11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**，`closed_and_valid`
+  应为 9（9 个写出的文件全部 brep_valid=True）。
+- `训练集/1` 我确认修不了（三条路全零变化），且它性质是"已是 Solid 但
+  BRep 无效"，不是"洞没补上"。
+- `训练集/4` 我主动不动它。
+- **任务书 92% 仍未达成。**
+
+七、我保留的限制
+
+1. 任务书 92% 未达成（当前 81.8%）。
+2. 合成基准有一个坏输出 `测试集/8#face3` 被写出来（合成模式未开不伤害
+   保护），我**没有修它**、也**没有改默认值**。
+3. `case_count` 从 14 变 17，我**没有查明原因**。
+4. 基准默认 `--max-step-bytes` 16 MiB 会挡掉两个真破损件，我没改。
+5. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+6. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+7. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+代码位置：`scripts\benchmark_step_repair.py`
+（`brep_valid_of_written_file`、两处调用、aggregate 四项新增）；
+输出：`outputs\step_repair_benchmark_relaxed`（合成，含新字段）、
+`outputs\step_repair_all21`（真实件全量 21 件）。

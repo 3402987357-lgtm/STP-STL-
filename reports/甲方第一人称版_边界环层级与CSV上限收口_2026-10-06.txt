@@ -1,0 +1,97 @@
+我方第一人称版边界环层级与 CSV 上限收口
+记录日期：2026-10-06
+
+一、本轮目标
+
+我方继续按区域推进，把“主边界 Wire 投影面积”升级为“多个闭合环之间谁包住谁”。
+本轮我要回答外环、内孔候选、相交环和无法判断四类关系，并把它接入主 Wire 选择、
+工程人工复核、JSON 和 CSV。这样后续 AI 不会只按周长或面积挑一条最大环，就把
+内环误当成最终外轮廓。
+
+二、本轮实现
+
+1. 阶段 3 新增字段：
+   - `primary_boundary_loop_role`
+   - `primary_boundary_loop_relation_status`
+   - `primary_boundary_loop_relation_evidence`
+2. 工程区域新增同名字段，并新增复核原因
+   `BOUNDARY_LOOP_RELATION_CONFLICT`，优先级为 `MEDIUM`。
+3. 阶段 3 schema 升为 `step-feature-classification-1.9`。
+4. 工程 schema 升为 `step-engineering-features-2.4`。
+5. 工程区域 CSV 升为 47 列，新增：
+   - `主边界Wire环角色`
+   - `主边界Wire环关系状态`
+   - `主边界Wire环关系证据`
+6. 环关系状态包括：
+   - `SINGLE_CLOSED_LOOP`
+   - `NESTED_LOOPS`
+   - `MULTIPLE_DISJOINT_LOOPS`
+   - `INTERSECTING_LOOPS`
+   - `TOUCHING_LOOPS`
+   - `UNRESOLVED_RELATION`
+   - `NO_CLOSED_LOOPS`
+7. 环角色包括：
+   - `ISOLATED_LOOP_CANDIDATE`
+   - `OUTER_CANDIDATE`
+   - `OUTER_WITH_HOLES_CANDIDATE`
+   - `INNER_HOLE_CANDIDATE`
+8. 主候选落入内环或闭合环相交时，Wire 选择状态写入
+   `LOOP_RELATION_CONFLICT`，不把候选标为可直接使用。
+
+三、本轮发现并修复的真实问题
+
+1. 多环投影坐标错误
+   - 我最初把每个环分别按自身中心投影，导致两个实际相交的环被误判为包含。
+   - 我用相交正方形合成测试复现后，改成所有环共享同一个全局原点和全局平面轴，
+     再重新做包含、相交和接触判断。
+2. CSV 单元格超限
+   - 环关系完整证据直接写入 CSV 后，单个单元格超过 Python CSV 默认 131072 字符
+     上限，并且超过 Excel 单元格 32767 字符上限。
+   - 我把 JSON 保留为完整证据，CSV 改成可扫描摘要；所有证据列统一限制在
+     30000 字符以内。
+   - 重生成后 BOTTLE 最大单元格 7285 字符，mould_04 最大单元格 16607 字符。
+3. 清理脚本问题
+   - `cleanup_regenerable_outputs.ps1` 曾重复写了两套再生日志兜底逻辑，并在
+     Windows PowerShell 5.1 下出现解析错误。
+   - 我收敛成单一 `*regeneration*.log` 白名单模式，并在 Windows PowerShell 和
+     PowerShell 7 下验证可运行。
+
+四、正式输出统计
+
+1. BOTTLE
+   - `BASELINE`、311 Face、141 区域、47 列区域 CSV。
+   - 环关系：84 个单环、4 个嵌套环、1 个多独立环、51 个无闭合环、
+     1 个无法判断。
+   - 环角色：84 个隔离环、1 个外环、4 个带孔外环、52 个不可用。
+   - 环关系冲突 0 个。
+2. mould_04
+   - `REVIEW_REQUIRED`、4974 Face、1393 区域、47 列区域 CSV。
+   - 环关系：539 个单环、18 个嵌套环、118 个多独立环、48 个相交环、
+     1 个接触环、642 个无法判断、27 个无闭合环。
+   - 环角色：524 个隔离环、153 个外环、19 个带孔外环、697 个不可用。
+   - 环关系冲突 49 个，工程复核原因写入 60 个区域。
+3. 当前 outputs 为 30 个正式文件，共 `139,068,005` 字节，约 `132.63 MiB`。
+
+五、我方验证
+
+1. 边界环与工程定向测试：`42 passed in 3.68s`。
+2. 全量无缓存 pytest：`225 passed in 21.95s`。
+3. `compileall` 退出码 0；`pip check` 返回 `No broken requirements found`。
+4. 清理策略测试：`3 passed`。
+5. 正式 outputs 审计：`30/30 VALID`、0 损坏、0 跳过、`PASS`。
+6. 项目缓存目录 0；当前 D 盘剩余约 `178.48 GiB`。
+
+六、当前限制
+
+环层级仍是当前文件内的弦近似二维多边形关系，不是最终 NURBS 精确孔洞布尔运算，
+不是封闭实体验证，也不是跨 CAD 永久拓扑 ID。主 Wire 仍是候选证据，不是最终
+分型线。XT/PRT 原生适配、甲方标注集准确率、99%/1%/3 分钟性能、工业 G0/G1/G2、
+GUI、安装包和生产验收仍未完成。
+
+七、交接关键词
+
+`step-feature-classification-1.9`、`step-engineering-features-2.4`、
+`primary_boundary_loop_role`、`primary_boundary_loop_relation_status`、
+`primary_boundary_loop_relation_evidence`、`NESTED_LOOPS`、
+`INNER_HOLE_CANDIDATE`、`INTERSECTING_LOOPS`、`LOOP_RELATION_CONFLICT`、
+`BOUNDARY_LOOP_RELATION_CONFLICT`、`47列区域CSV`、`225 passed`。

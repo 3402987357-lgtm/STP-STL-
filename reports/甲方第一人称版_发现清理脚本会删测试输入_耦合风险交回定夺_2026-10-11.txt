@@ -1,0 +1,71 @@
+我发现一个**真实耦合风险**：项目自带清理脚本会删掉两个测试的输入文件
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、起因
+
+我想收口清理 `outputs/` 里的中间产物，于是先去读项目自带的
+`scripts\cleanup_regenerable_outputs.ps1`，而不是自己动手删。
+结果读到一处会**破坏测试**的匹配规则。
+
+二、风险（有文件路径为证，不是推测）
+
+清理脚本第 67-71 行：
+
+        $_.FullName -like "*step_repair_benchmark*\*" -and
+        $_.Name -like "damaged*"
+
+而我实测这个匹配**命中**了：
+
+        outputs\step_repair_benchmark_relaxed\测试集__10_face1\damaged.stp
+        outputs\step_repair_benchmark_relaxed\测试集__10_face3\damaged.stp
+        outputs\step_repair_benchmark_relaxed\测试集__10_face1\damaged.repaired.step
+        （还有更多）
+
+**同时**，`tests\test_step_repair_sampling.py` 的第 262 和 302 行正是读
+这个目录当输入：
+
+        Path("outputs") / "step_repair_benchmark_relaxed"
+              / "测试集__10_face3" / "damaged.stp"
+
+**结论：跑一次这个清理脚本，这两个测试就会因为输入文件消失而失败。**
+
+三、为什么容易漏看
+
+脚本作者的意图是删 `step_repair_benchmark`（基准中间几何，可重跑）。
+但测试用的是 `step_repair_benchmark_relaxed`——**多了 `_relaxed` 后缀**。
+
+由于匹配用的是**中间通配** `*step_repair_benchmark*`，`relaxed` 那一份
+**被一起命中了**。名字相近 + 通配在中间，所以这个耦合不容易被发现。
+
+四、我**没有**做的事（重要）
+
+    - 我**没有执行**这个清理脚本（一旦执行就会删掉那两个测试的输入）。
+    - 我**没有改**这个脚本——因为"该不该删 relaxed"取决于它是不是正式
+      证据，这要甲方定；而且改清理脚本属于扩大改动范围。
+    - 我也**没有**改那两个测试（它们读真实产物是有意为之的设计）。
+
+    所以这一条记为"**已发现、交回你定**"。
+
+五、给你的两个可选处理方向（供参考，我未实施）
+
+    方向 1：把 `step_repair_benchmark_relaxed` 加进脚本的**保留**名单
+            （改 scripts\cleanup_regenerable_outputs.ps1）。
+    方向 2：让那两个测试改为**自带最小输入**或用 tmp_path 生成，
+            不再依赖 outputs 下的产物（改 tests\test_step_repair_sampling.py）。
+
+    我倾向方向 1（改动小、不影响测试意图），但**等甲方拍板**。
+
+六、附带：清理脚本本身是**谨慎**的（这点要说清楚）
+
+它有越界检查（拒绝删 outputs 之外的路径）、还有前置校验——正式工程输出
+（`bom_bottle\BOTTLE.bom.json` 等）**若不存在就直接报错拒绝清理**。
+所以它不是个危险的脚本，**只有这一条匹配规则**碰到了测试依赖。
+
+七、限制
+
+1. 我是**静态分析 + 路径实测**得出"会被删"的结论，**没有真的执行脚本去
+   验证**（执行就会破坏，所以我刻意不跑）。
+2. 我只查了 `damaged*` 这一条规则与这两个测试；脚本里其它几十个清理目标
+   是否还有类似耦合，**我没有逐一排查**。
+3. 本轮**未改任何代码**，也未执行清理。

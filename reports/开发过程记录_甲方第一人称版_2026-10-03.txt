@@ -1,0 +1,1646 @@
+三维模型破损区域智能修补项目
+开发过程记录
+甲方第一人称版本
+
+记录原则
+
+我方要求所有代码、配置、测试、运行输出和过程记录统一放在 D 盘工程目录：
+
+D:\STP_STL_Missing_Region_Recognition
+
+我方要求每次新增或修改代码后，都在本 TXT 中记录：
+
+1. 本次操作时间。
+2. 本次操作目的。
+3. 新增或修改的文件。
+4. 具体实现内容。
+5. 关键算法或参数。
+6. 运行命令。
+7. 测试结果。
+8. 已知限制。
+9. 下一步计划。
+
+本记录不把计划中的能力写成已经完成的能力。凡是没有经过真实命令或测试验证的内容，我方都会标记为“待验证”。
+
+记录 000：确认 D 盘项目目录
+
+时间：2026 年 10 月 3 日
+
+我方操作：
+
+1. 我检查了 D 盘根目录。
+2. 我发现已有项目目录 `D:\STP_STL_Missing_Region_Recognition`。
+3. 我确认该目录已经包含 `src`、`tests`、`scripts`、`configs`、`data`、`outputs` 和 `reports`。
+4. 我确认该目录已经存在 Python 虚拟环境 `.venv`。
+5. 我确认当前工作区 C 盘只保存 TXT 计划书和临时分析文件，不作为代码目录。
+6. 从本条记录开始，我方所有代码编辑和运行都以 D 盘工程为工作目录。
+
+当前工程已有内容：
+
+1. STL ASCII/Binary 读取。
+2. TriangleMesh 基础数据结构。
+3. STL 质量报告。
+4. STL 与参考网格的基础距离比对。
+5. 缺失区域聚类。
+6. STEP/STP 文本探测。
+7. OCP STEP 三角化适配入口。
+8. 数据集清单和 SHA256 登记。
+9. 网格分型线和分型面基线。
+10. JSON、CSV、PLY 等输出。
+11. 基础测试文件和甲方第一人称说明文档。
+
+已确认的运行事实：
+
+1. 当前 D 盘虚拟环境可以导入 OCP。
+2. 当前环境已经能够读取一个真实 STEP 文件，并完成三角化。
+3. 该真实样例一次读取得到约 61477 个顶点和 124647 个三角面。
+4. 当前虚拟环境没有 pytest 模块，因此正式 pytest 测试需要先补齐测试依赖或使用其他已配置环境。
+5. 这不影响我继续编写代码，但在本轮结束前必须补做正式测试。
+
+本条记录的结论：
+
+我方不重新创建第二个项目目录，也不把代码写回 C 盘。后续代码继续放在 `D:\STP_STL_Missing_Region_Recognition`。
+
+下一步：
+
+我方将按功能区域补齐“局部网格孔洞修补”和“修补前后质量验证”，同时在每次代码变更后更新本 TXT。
+
+记录 001：新增局部网格修补区域
+
+时间：2026 年 10 月 3 日
+
+本次目的：
+
+我方先把最小可验证的“检测到简单孔洞并进行局部修补”闭环写入 D 盘工程，作为后续 STEP/BRep 曲面修补的网格基线。
+
+本次新增文件：
+
+1. `src/cad_inspector/domain/repair.py`
+2. `src/cad_inspector/validation/__init__.py`
+3. `src/cad_inspector/validation/mesh_quality.py`
+4. `src/cad_inspector/repair/__init__.py`
+5. `src/cad_inspector/repair/mesh_hole.py`
+6. `src/cad_inspector/output/repair_report.py`
+7. `tests/test_mesh_repair.py`
+
+本次修改文件：
+
+1. `src/cad_inspector/domain/__init__.py`
+2. `src/cad_inspector/output/__init__.py`
+3. `src/cad_inspector/cli.py`
+
+具体实现细节：
+
+1. 我新增 `RepairConfig`，集中控制最大边界边数、最大孔洞面积、最大平面误差、最小边界环顶点数和是否允许非凸环。
+2. 我新增 `BoundaryLoopResult`、`RepairRegionResult` 和 `RepairResult`，让 CLI、GUI 和报告使用同一套结果结构。
+3. 我通过无向边到三角面映射识别只被一个三角面使用的开放边。
+4. 我只把每个边界顶点恰好连接两条边的边界识别为简单闭合环，分叉边界直接进入人工复核状态。
+5. 我使用 PCA 估计边界环的局部拟合平面，并计算投影面积、周长、平面误差和凸性。
+6. 对满足安全条件的简单凸平面环，我在中心新增一个顶点，并创建三角扇填补孔洞。
+7. 我使用邻接三角面的平均法向决定新三角面的方向，尽量保持原网格法向一致。
+8. 我在修补后比较开放边数量、边界环数量、非流形边、退化三角形和总面积变化。
+9. 我没有把复杂非凸边界、非平面边界或过大孔洞强行修复，而是输出 `manual_review_required`。
+10. 我新增 `repair` 命令，输出 `repaired.stl`、`repair.json` 和 `repair_regions.csv`。
+
+本次修改文件的具体入口：
+
+1. `cad_inspector.cli` 新增 `repair` 子命令。
+2. 命令示例：
+
+   `python -m cad_inspector.cli repair 输入模型.stl --output-dir 输出目录`
+
+3. 该命令只接收 STL，暂不把 STEP/BRep 假装成网格孔洞修补。
+
+当前已知限制：
+
+1. 当前实现是平面三角网格孔洞修补基线，不是 NURBS、G1 或 G2 曲面修补。
+2. 非凸边界默认不自动处理，避免三角扇自交。
+3. 还没有把该修补器接入完整的 STL 与 STEP 缺失区域检测管线。
+4. pytest 尚未运行，因为当前 D 盘虚拟环境提示没有安装 pytest。
+
+下一步验证：
+
+1. 先运行 `python -m compileall -q src tests`。
+2. 安装或调用可用的 pytest 环境。
+3. 运行新增的 3 个修补测试。
+4. 用合成缺顶面 STL 运行 CLI。
+5. 确认输出 STL、JSON 和 CSV 均可读取。
+
+记录 002：修正修补质量判定和命令行启动方式
+
+时间：2026 年 10 月 3 日
+
+本次发现：
+
+1. 我第一次运行新修补测试时，3 个新测试中有 1 个失败。
+2. 失败原因不是孔洞没有补上，而是质量比较器把“补回缺失区域后总面积增加”直接当成失败。
+3. 对于孔洞修补，总面积增加本身可能是正确结果，不能单独作为阻断条件。
+4. 我还发现直接运行 `python -m cad_inspector.cli` 时，CLI 文件没有自己的模块启动保护，命令不会进入 `main()`。
+
+本次修改文件：
+
+1. `src/cad_inspector/validation/mesh_quality.py`
+2. `src/cad_inspector/cli.py`
+
+具体修改：
+
+1. 我保留面积变化比例和面积警告，继续写入质量报告。
+2. 我把非流形边增加、退化三角形增加作为质量阻断条件。
+3. 我要求开放边数量下降或原本就是闭合，才能通过拓扑改进检查。
+4. 我在 `cli.py` 增加 `if __name__ == "__main__"` 启动入口。
+5. 现在既可以使用 `python -m cad_inspector`，也可以使用 `python -m cad_inspector.cli`。
+
+本次验证前状态：
+
+1. 全部测试为 22 项通过、1 项失败。
+2. 失败测试为简单平面孔洞自动修补测试。
+3. 失败状态已经定位到质量判定规则，而不是几何填补代码。
+
+下一步：
+
+我方将重新运行全部 pytest，运行 `repair` 命令，并检查 `repaired.stl`、`repair.json` 和 `repair_regions.csv` 是否真实生成。
+
+记录 003：完成修补测试和命令行验证
+
+时间：2026 年 10 月 3 日
+
+我方运行命令：
+
+1. `D:\STP_STL_Missing_Region_Recognition\.venv\Scripts\python.exe -m pytest -q`
+2. `$env:PYTHONPATH='D:\STP_STL_Missing_Region_Recognition\src'; .venv\Scripts\python.exe -m cad_inspector repair data\synthetic\candidate_cube_missing_top.stl --output-dir outputs\repair_demo`
+3. `$env:PYTHONPATH='D:\STP_STL_Missing_Region_Recognition\src'; .venv\Scripts\python.exe -m cad_inspector.cli validate data\synthetic\candidate_cube_missing_top.stl`
+
+实际结果：
+
+1. 全部测试通过：23 passed。
+2. 缺顶面合成模型修补成功。
+3. 修补前三角面数量为 10，修补后为 14。
+4. 修补前开放边数量为 4，修补后为 0。
+5. 修补前边界环数量为 1，修补后为 0。
+6. 修补前总面积为 500 mm2，修补后总面积为 600 mm2。
+7. 修补后没有增加非流形边。
+8. 修补后没有增加退化三角形。
+9. 生成了：
+   - `D:\STP_STL_Missing_Region_Recognition\outputs\repair_demo\repaired.stl`
+   - `D:\STP_STL_Missing_Region_Recognition\outputs\repair_demo\repair.json`
+   - `D:\STP_STL_Missing_Region_Recognition\outputs\repair_demo\repair_regions.csv`
+
+我方判断：
+
+1. 局部网格孔洞修补基线已经通过自动化测试。
+2. 面积变化仍然作为报告警告保留，因为修补本身会补回缺失面积。
+3. 命令行入口已经可以通过 `python -m cad_inspector` 和 `python -m cad_inspector.cli` 运行。
+4. 该结果只证明简单平面网格孔洞闭环，不代表复杂曲面或 STEP BRep 修补已经完成。
+
+下一步：
+
+我方将把 `D:\桌面\888.rar` 解包到 D 盘工程的数据目录，并实现 STEP/BRep 的 Face、Edge、Wire、Shell、Solid 拓扑统计和有效性检查。
+
+记录 004：将甲方样例数据放入 D 盘工程
+
+时间：2026 年 10 月 3 日
+
+我方执行的操作：
+
+1. 我在 D 盘工程内创建 `data\provided`。
+2. 我从 `D:\桌面\888.rar` 解包数据。
+3. 我没有覆盖 `data\raw` 中已有的其他样例数据。
+4. 我把本次附件数据单独放在 `data\provided\三维模型破损区域智能修补`。
+
+实际数据结果：
+
+1. 训练集目录包含 18 个文件，也就是 9 对 STL/STP。
+2. 测试集目录包含 24 个文件，也就是 12 对 STL/STP。
+3. 总文件数量为 42 个。
+4. 总文件大小约为 1.2 GB。
+5. 当前附件数据与原始要求的训练集 25 组、测试集 25 组仍然不一致。
+6. 我方保留这个差异，不把 9+12 组样例虚构成 25+25 组正式验收数据。
+
+真实 STEP 联调结果：
+
+1. 我使用训练集 `0.stp` 做了 OCP 读取。
+2. STEP 文件读取状态为 `IFSelect_RetDone`。
+3. Shape 不是空对象。
+4. BRep 有效性检查返回 True。
+5. 读取到 1 个 Solid。
+6. 读取到 1 个 Shell。
+7. 读取到 280 个 Face。
+8. 读取到 280 个 Wire。
+9. 读取到 1542 个 Edge。
+10. 读取到 3084 个 Vertex。
+
+本条记录结论：
+
+1. D 盘现在同时具备代码、虚拟环境、合成数据、原始样例和运行输出。
+2. 后续开发可以直接使用甲方提供的 STL/STP 数据。
+3. STEP/BRep 拓扑区域具备真实后端条件，不需要停留在文本探测。
+
+下一步：
+
+我方将新增 STEP/BRep 拓扑报告模块，并提供命令行入口，输出 Face、Edge、Wire、Shell、Solid、Vertex、单位和 Shape 有效性。
+
+记录 005：新增 STEP/BRep 拓扑报告区域
+
+时间：2026 年 10 月 3 日
+
+本次新增文件：
+
+1. `src/cad_inspector/io/step_topology.py`
+2. `src/cad_inspector/output/step_report.py`
+3. `tests/test_step_topology.py`
+
+本次修改文件：
+
+1. `src/cad_inspector/io/__init__.py`
+2. `src/cad_inspector/output/__init__.py`
+3. `src/cad_inspector/cli.py`
+
+具体实现：
+
+1. 我新增 `StepTopologyReport`，统一保存 STEP 文件路径、单位、后端、Shape 空状态、Shape 有效性、实体数量、Face ID 和耗时。
+2. 我使用 OCP 的 `STEPControl_Reader` 读取真实 STEP。
+3. 我使用 `TopExp_Explorer` 统计 Solid、Shell、Face、Wire、Edge 和 Vertex。
+4. 我使用 `BRepCheck_Analyzer` 检查 Shape 有效性。
+5. 我继续调用文本探测器读取单位线索，但不把文本实体数量冒充 BRep 几何数量。
+6. 如果没有 OCP，我返回明确的依赖缺失错误。
+7. 我新增命令 `step-report`，默认生成 `outputs/step_topology.json`。
+8. 我新增序列化测试，确认报告版本、实体数量和耗时可以稳定写入 JSON。
+
+命令示例：
+
+`$env:PYTHONPATH='D:\STP_STL_Missing_Region_Recognition\src'; .venv\Scripts\python.exe -m cad_inspector step-report data\provided\三维模型破损区域智能修补\训练集\0.stp --output outputs\step_topology_0.json`
+
+当前限制：
+
+1. 当前报告已经能统计 BRep 拓扑，但还没有把每个 STEP Face 和三角化后的 STL 三角面建立稳定映射。
+2. 当前报告还没有执行曲面连续性 G0/G1/G2 分析。
+3. 当前报告还没有自动修补 STEP Face。
+4. Face ID 目前使用读取顺序编号，后续需要补充稳定的几何哈希或拓扑映射策略。
+
+下一步：
+
+我方将运行完整测试和真实 `step-report` 命令；验证通过后，继续把 STEP Face 级信息接入 STL/STEP 缺失区域检测。
+
+记录 006：完成真实 STEP 拓扑验证
+
+时间：2026 年 10 月 3 日
+
+我方运行命令：
+
+1. `.venv\Scripts\python.exe -m pytest -q`
+2. `$env:PYTHONPATH='D:\STP_STL_Missing_Region_Recognition\src'; .venv\Scripts\python.exe -m cad_inspector step-report data\provided\三维模型破损区域智能修补\训练集\0.stp --output outputs\step_topology_0.json`
+3. `$env:PYTHONPATH='D:\STP_STL_Missing_Region_Recognition\src'; .venv\Scripts\python.exe -m cad_inspector probe data\provided\三维模型破损区域智能修补\训练集\0.stp --output-dir outputs\probe_provided --no-files`
+
+实际结果：
+
+1. 全部测试通过：24 passed。
+2. `step-report` 状态为 `COMPLETE`。
+3. OCP 读取的 Shape 不是空对象。
+4. BRep 有效性为 True。
+5. 单位识别为 mm。
+6. Solid 数量为 1。
+7. Shell 数量为 1。
+8. Face 数量为 280。
+9. Wire 数量为 280。
+10. Edge 数量为 1542。
+11. Vertex 数量为 3084。
+12. 真实 STEP 拓扑报告耗时约 4 秒。
+13. 文本探测命令同时返回 STEP 状态 `COMPLETE`。
+
+生成文件：
+
+1. `D:\STP_STL_Missing_Region_Recognition\outputs\step_topology_0.json`
+
+本条记录结论：
+
+我方已经证明 OCP 真实几何后端可以在 D 盘工程中读取甲方提供的 STEP，并输出 Face、Edge、Wire、Shell、Solid 和 Vertex 信息。当前这部分已经不再是纯文本探测。
+
+当前未完成：
+
+1. Face 与三角化网格三角面的稳定映射。
+2. Face 邻接图和曲面类型统计。
+3. STEP 与 STL 的区域级偏差匹配。
+4. STEP BRep 局部曲面修补。
+
+下一步：
+
+我方将更新 README 运行说明，并继续实现 STEP Face 到三角化结果的映射，为缺失区域的 Face ID 输出做准备。
+
+记录 007：保存 STEP Face 到三角面映射
+
+时间：2026 年 10 月 3 日
+
+本次修改文件：
+
+1. `src/cad_inspector/io/step.py`
+
+具体实现：
+
+1. 我在 pythonocc-core 读取分支中为每个三角化 Face 分配顺序 Face ID。
+2. 我在 OCP 读取分支中为每个三角化 Face 分配顺序 Face ID。
+3. 我把每个三角面对应的 STEP Face 编号写入 `TriangleMesh.metadata["face_ids_by_triangle"]`。
+4. 我把 STEP Face 总数写入 `TriangleMesh.metadata["face_count"]`。
+5. 原始三角面顶点、三角面索引和已有单位信息保持不变。
+6. 这项映射用于后续把检测到的 STL/STEP 三角面区域回溯到原始 STEP Face。
+
+本次没有修改：
+
+1. 我没有改变 STEP 导入容差。
+2. 我没有改变网格顶点去重规则。
+3. 我没有把 Face ID 直接写成最终稳定 CAD 持久化 ID；当前仍是本次读取顺序编号。
+
+已知限制：
+
+1. 如果 STEP 文件读取顺序因内核版本变化，顺序 Face ID 可能变化。
+2. 后续需要补充基于几何特征和拓扑关系的稳定 Face 标识。
+3. 当前只保存 Face 到三角面的映射，还没有反向构建 Face 邻接图。
+
+下一步验证：
+
+1. 重新运行完整 pytest。
+2. 读取甲方训练集 `0.stp`，确认三角面数量与 Face 映射长度一致。
+3. 更新 README，补充 D 盘数据目录、修补命令和 STEP 报告命令。
+
+记录 008：完成 Face 映射验证并更新 README
+
+时间：2026 年 10 月 3 日
+
+我方验证命令：
+
+1. `.venv\Scripts\python.exe -m pytest -q`
+2. `$env:PYTHONPATH='D:\STP_STL_Missing_Region_Recognition\src'; .venv\Scripts\python.exe -c "from cad_inspector.io.step import load_step_as_mesh; ..."`
+3. `.venv\Scripts\python.exe -m compileall -q src tests`
+
+实际结果：
+
+1. 全部测试通过：24 passed。
+2. Python 编译检查通过。
+3. 真实 `0.stp` 三角化得到 124153 个顶点。
+4. 真实 `0.stp` 三角化得到 248308 个三角面。
+5. `face_count` 为 280。
+6. `face_ids_by_triangle` 长度为 248308，与三角面数量完全一致。
+7. `face_ids_by_triangle` 的唯一 Face 数量为 280。
+8. 映射的前后编号均能正常读取。
+
+本次修改文件：
+
+1. `README.md`
+
+README 新增内容：
+
+1. D 盘甲方数据目录。
+2. 当前 9 对训练数据和 12 对测试数据的事实数量。
+3. `step-report` 真实 BRep 报告命令。
+4. STEP Face 到三角面的元数据字段。
+5. `repair` 局部 STL 孔洞修补命令。
+6. 修补输出文件说明。
+
+本条记录结论：
+
+我方现在可以从真实 STEP 读取拓扑统计，并在三角化网格中追溯原始 STEP Face 编号。README、代码、测试和运行记录均位于 D 盘工程内。
+
+下一步：
+
+我方将把 Face 映射接入区域检测结果，让缺失区域报告同时输出三角面编号和 STEP Face 编号，并开始实现双向距离与有向距离。
+
+记录 009：接入区域级候选 Face 和 STEP Face 映射
+
+时间：2026 年 10 月 3 日
+
+本次修改文件：
+
+1. `src/cad_inspector/models.py`
+2. `src/cad_inspector/detection/missing_regions.py`
+3. `src/cad_inspector/output/writers.py`
+4. `tests/test_core.py`
+
+具体实现：
+
+1. 我在 `RegionResult` 中新增 `candidate_step_face_ids`。
+2. 缺失区域检测现在保留参考区域三角面编号。
+3. 缺失区域检测现在收集参考区域采样点对应的候选三角面编号。
+4. 候选模型带有 `face_ids_by_triangle` 时，我把候选三角面编号映射为 STEP Face 编号。
+5. 多余材料区域继续使用候选网格自身的三角面区域，并同步尝试 STEP Face 映射。
+6. CSV 输出增加 `candidate_step_face_ids` 字段。
+7. JSON 输出通过 `RegionResult.to_dict()` 自动包含新的映射字段。
+
+本次问题和修正：
+
+1. 第一次接入时，我错误地使用了参考网格作为 STEP Face 映射源。
+2. 测试发现缺失区域的 `candidate_step_face_ids` 为空。
+3. 我把区域几何来源和 STEP Face 映射来源拆开，增加 `step_mapping_mesh` 参数。
+4. 修正后候选 STEP Face 映射能够从候选模型元数据中正确读取。
+
+验证结果：
+
+1. 完整测试通过：25 passed。
+2. Python 编译检查通过。
+3. 独立映射检查 `triangle_id=0 -> step_face_id=42` 通过。
+4. 之前的缺失顶面测试现在能验证候选三角面和候选 STEP Face 均非空。
+
+当前限制：
+
+1. 只有候选模型经过 STEP 三角化并保留元数据时，才会输出候选 STEP Face 编号。
+2. 当前 STEP Face 编号仍是读取顺序编号。
+3. 还没有把 Face 邻接、曲面类型和连续性加入区域报告。
+
+下一步：
+
+我方将运行真实 STEP 候选与 STL 参考的完整 `inspect` 流程，确认大模型加载、区域报告和 Face 映射能够在同一条命令中工作。
+
+
+===== 开发记录 2026-10-03T02:31:21+08:00 =====
+标题：完成输入安全与极端测试第二轮修复
+状态：已完成修复，真实数据压力轮运行中
+涉及文件：
+- src/cad_inspector/geometry/mesh.py
+- src/cad_inspector/geometry/stl.py
+- src/cad_inspector/detection/distance.py
+- src/cad_inspector/pipeline.py
+- src/cad_inspector/models.py
+- src/cad_inspector/io/input_validator.py
+- configs/default.json
+- tests/test_extreme_inputs.py
+- tests/test_pipeline_units.py
+- scripts/run_real_pair_stress.py
+我完成的事情：
+我把非有限顶点、重复三角面、孤立顶点、退化三角形和非流形边纳入质量报告与人工复核判定。我让 auto 距离后端在坏网格上跳过 trimesh 加速并回退到安全算法，并把 RuntimeWarning 转为可控回退。我强化了 ASCII STL facet/outer loop/endloop/endfacet 结构检查，补充 Binary STL 头部以 solid 开头、截断和空文件识别。我把未知单位、网格质量问题和分辨率风险纳入 review 状态。我新增 write_colored_mesh 配置，压力测试可以不生成大体积彩色 PLY。我新增真实 21 对 STEP/STL 顺序压力脚本，记录状态、耗时、质量告警、结果区域和 Windows 工作集。
+我执行的验证：
+我运行 .venv\\Scripts\\python.exe -m pytest -q，结果 57 passed；我运行 .venv\\Scripts\\python.exe -m compileall -q src tests，结果通过；我运行 14 项输入安全与紧凑输出专项测试，结果 14 passed；我完成 42 个真实文件批量探测，21 个 STEP COMPLETE、21 个 STL UNSUPPORTED、0 个批量异常；真实 21 对几何压力轮已经启动，当前首个样本仍在运行。
+我保留的限制：
+真实压力轮尚未完成，当前不能提前声明 21 对几何检测全部通过。工业级 G1/G2 连续性、STEP 曲面自动修补、IGES/STEP 修复输出仍未完成。
+
+
+===== 开发记录 2026-10-02 最终验收轮 =====
+标题：完成真实 21 对压力轮、最终回归和完整甲方报告
+状态：已完成本轮开发与验收记录
+涉及文件：
+- src/cad_inspector/geometry/mesh.py
+- src/cad_inspector/geometry/stl.py
+- src/cad_inspector/detection/distance.py
+- src/cad_inspector/pipeline.py
+- src/cad_inspector/models.py
+- src/cad_inspector/io/input_validator.py
+- configs/default.json
+- tests/test_extreme_inputs.py
+- tests/test_pipeline_units.py
+- scripts/run_real_pair_stress.py
+- README.md
+- reports/完整改进与极端测试验收报告_甲方第一人称版_2026-10-02.txt
+我完成的事情：
+我完成了退化三角面过滤加速、坏网格质量复核、ASCII/Binary STL 损坏输入防护、紧凑压力输出、单样本隔离 worker、增量压力汇总和超大 STL resource_guard。我的真实压力轮覆盖训练集 9 对和测试集 12 对，共 21 对；20 对实际完成为 review，训练集/1 因 STL 475 MB 且历史实际运行超过 1881 秒而进入 resource_guard。我把 73 项自动化测试、真实数据汇总、附件要求与用户要求区分、工具技能清单、后续阶段和续写关键词写入最终验收报告。
+我执行的验证：
+我运行 .venv\Scripts\python.exe -m pytest -q，结果 73 passed；我运行 .venv\Scripts\python.exe -m compileall -q src scripts tests，结果通过；我运行真实数据批量探测，42 个文件中 21 个 STEP COMPLETE、21 个 STL 探测入口 UNSUPPORTED、0 个批量异常；我读取 outputs\real_pair_stress_2026-10-02\summary.json，确认 pair_count=21、processed_pair_count=21、status 为 20 个 review 和 1 个 resource_guard；我确认压力输出约 0.25 MB，没有生成大体积彩色 PLY。
+我保留的限制：
+我没有把 review 写成 pass，没有承诺 96% 检测准确率、92% 修补成功率、8 秒处理时间或 48 小时稳定性。G0/G1/G2 连续性、NURBS/STEP 曲面自动修补、工业级 STP/IGES 输出、XT/PRT 直接读取、GUI 和安装包仍需后续阶段完成。缓存清理命令被 Windows 安全策略拒绝，我没有强制删除任何非缓存文件，也没有删除原始数据、虚拟环境或正式输出。
+
+
+===== 开发记录 2026-10-03T03:21:42+08:00 =====
+标题：修复分型面越界索引和压力轮过期缓存问题
+状态：已修复并通过专项测试
+涉及文件：
+- src\cad_inspector\validation\parting_quality.py
+- tests\test_parting_quality.py
+- scripts\run_real_pair_stress.py
+- tests\test_real_pair_stress.py
+我完成的事情：
+我发现分型面质量门禁在发现负索引或超出顶点范围后仍会继续使用非法索引计算三角面积，可能把坏输入从可审计告警升级为未捕获异常。我在共享质量函数中发现越界后立即返回，保留明确的索引越界告警，并为负索引和正向越界各增加回归测试。我还发现真实压力轮会无条件复用旧 worker_summary.json，输入文件内容发生变化时可能得到过期结论。我为压力轮增加 STEP/STL 路径、文件大小和 SHA256 输入指纹；只有指纹完全一致才复用缓存，旧格式缓存会自动重新运行。我没有新增第三方依赖。
+我执行的验证：
+.venv\Scripts\python.exe -m pytest -q tests\test_parting_quality.py tests\test_real_pair_stress.py：8 passed；.venv\Scripts\python.exe -m pytest -q tests\test_step_features.py tests\test_step_faces_ocp.py tests\test_step_parting_ocp.py tests\test_parting_pipeline.py：8 passed；.venv\Scripts\python.exe -m compileall -q src scripts tests：通过。
+我保留的限制：
+压力轮旧缓存因缺少指纹不会再被静默信任；重新生成旧缓存需要重新运行对应样本。当前修复没有改变几何算法结论，也没有把 REVIEW_REQUIRED 改成通过。
+
+
+===== 开发记录 2026-10-03T03:26:19+08:00 =====
+标题：完成第4轮真实联调、空间清理和报告同步
+状态：已完成并通过验收轮
+涉及文件：
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- outputs\extreme_round4_step_report.json
+- outputs\extreme_round4_face_features.json
+- outputs\extreme_round4_feature_classification.json
+- outputs\extreme_round4_parting
+- outputs\extreme_round4_probe
+我完成的事情：
+我以甲方第一人称把本轮实际结果同步到 README 和当前完成情况报告：全量自动化回归更新为 83 passed，新增越界分型面索引和过期压力缓存的边界说明，真实训练集 0.stp 的拓扑、Face 特征、Face 分类、B-Rep 分型线和分型面联调证据已登记。我保留了 STL 探测器返回 UNSUPPORTED 的真实边界，不把它写成崩溃，也不把 BASELINE 写成工业级 COMPLETE。我按项目根目录校验后清理了项目及虚拟环境内可再生的 __pycache__ 和 .pytest_cache，释放约 69.09 MB，没有删除原始数据、.venv 本体、正式输出或报告。
+我执行的验证：
+.venv\Scripts\python.exe -m pytest -q：83 passed in 15.68s；.venv\Scripts\python.exe -m compileall -q src scripts tests：通过；.venv\Scripts\python.exe -m pip check：No broken requirements found；训练集 0.stp step-report：COMPLETE，280 Face、280 Wire、1542 Edge、3084 Vertex；step-feature-classify：BASELINE，280 Face、280 adjacency；parting_cli：BASELINE，line_closed=True，STEP/IGS/STL/JSON/CSV 输出成功；probe：STEP COMPLETE、STL UNSUPPORTED、FAILED=0。
+我保留的限制：
+当前仍未完成工业级 G0/G1/G2 连续性验收、NURBS/STEP B-Rep 自动修补、XT/PRT 原生读取、正式准确率和 48 小时稳定性。真实 21 对压力轮的历史结论仍是 20 对 review、1 对 resource_guard，不改写为通过。
+
+
+===== 开发记录 2026-10-03T03:34:18+08:00 =====
+标题：完成最终区域契约回归并收口
+状态：全量通过，已收口
+涉及文件：
+- src\cad_inspector\detection\step_features.py
+- src\cad_inspector\domain\step_features.py
+- tests\test_step_features.py
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- outputs\extreme_round4_feature_classification.json
+我完成的事情：
+我确认当前 STEP Face 分类的最终区域契约：我按角色和共享 Edge 连通分量生成区域，同一角色可以有多个区域；我记录每个区域的 Face 编号、面积、曲面类型统计、邻接区域编号、边界边数量和 UNRESOLVED 语义状态。我解决了并行验证期间出现的区域聚合/拆分契约不一致，最终以当前测试文件和当前实现为准。
+我执行的验证：
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider：85 passed in 15.44s；定向 STEP Face 测试：4 passed；真实训练集 0.stp step-feature-classify：BASELINE，schema step-feature-classification-1.1，280 Face、280 adjacency、18 regions；结果 JSON 可重新解析。
+我保留的限制：
+区域分类仍是可解释基线，不代表外部/内部腔体、模具拔模方向或工业级 G0/G1/G2 语义已自动确认；真实 21 对压力轮仍按历史证据保留 20 对 review、1 对 resource_guard。
+
+
+===== 开发记录 2026-10-03T03:45:16+08:00 =====
+标题：完成 STEP Face 映射完整性防护和极端输入回归
+状态：已修复并通过定向测试
+涉及文件：
+- src\cad_inspector\detection\missing_regions.py
+- src\cad_inspector\detection\step_features.py
+- tests\test_extreme_cases.py
+我完成的事情：
+我发现 STEP 三角面到 Face 的映射元数据如果长度不一致、含 None、NaN、非整数或错误容器类型，原流程可能在区域报告阶段抛出异常或静默产生不完整回溯。我在共享检测路径增加安全编号解析、映射长度检查、非法项统计和可审计诊断；当映射字段存在但异常时，我把全局结果降级为 review，并给出甲方可理解的人工复核提示。普通 STL 没有该字段时，我保持原有检测行为，不把缺少 STEP 映射误判为问题。我同时删除了区域构建中未使用的临时边映射代码，减少无效内存和维护负担。
+我执行的验证：
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests\test_extreme_cases.py tests\test_core.py tests\test_bidirectional_detection.py：28 passed；.venv\Scripts\python.exe -B -m compileall -q src tests scripts：通过。
+我保留的限制：
+当前映射仍以 STEP Face 读取顺序编号为主，几何稳定标识和跨 CAD 导出持久 ID 仍需后续阶段实现；本轮没有把人工复核结果升级成工业级自动通过。
+
+
+===== 开发记录 2026-10-03T03:46:37+08:00 =====
+标题：修复区域边界边统计回归
+状态：已修复并通过定向回归
+涉及文件：
+- src\cad_inspector\detection\step_features.py
+我完成的事情：
+我在全量极端回归中发现，删除区域构建前段的 edge_to_faces 初始化时，后段区域边界边数统计仍然依赖该结构，导致 Step Feature 分类出现 NameError。我恢复了必要的边到 Face 集合构建，没有保留真正无用的代码，并确认原有区域拆分、邻接关系和边界边统计逻辑继续工作。
+我执行的验证：
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests\test_step_features.py tests\test_extreme_cases.py：28 passed；.venv\Scripts\python.exe -B -m compileall -q src tests scripts：通过；上一轮全量曾出现 3 个失败，本轮定向修复后全部通过。
+我保留的限制：
+本轮回归说明全量测试仍必须保留；我没有把一次定向通过直接当作全量通过，下一步继续执行完整回归和真实样本联调。
+
+
+===== 开发记录 2026-10-03T03:49:17+08:00 =====
+标题：增加 Face 编号唯一性和区域覆盖审计
+状态：已完成并通过定向测试
+涉及文件：
+- src\cad_inspector\detection\step_features.py
+- tests\test_step_features.py
+我完成的事情：
+我继续对区域分类做极端输入排查。我增加了正整数 Face 编号校验、重复 Face 编号统计、有效 Face 覆盖率、区域重复引用计数和未分类 Face 计数；出现重复或非法编号时，我把结果明确降级为 REVIEW_REQUIRED，并在诊断字段中保留原因，避免字典覆盖造成静默丢面。我新增重复编号和非法编号回归测试，并修正了一条不稳定的覆盖率测试断言，使测试验证真实契约而不是偶然数值。
+我执行的验证：
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests\test_step_features.py：6 passed；.venv\Scripts\python.exe -B -m compileall -q src tests scripts：通过。
+我保留的限制：
+Face 编号仍来自当前 STEP 读取顺序；本轮只保证异常编号可审计降级，不宣称跨导出文件的永久 CAD ID 已完成。
+
+
+===== 开发记录 2026-10-03T03:53:17+08:00 =====
+标题：修复真实 STEP 中间水平面漏入区域的问题
+状态：已修复并通过真实训练样本联调
+涉及文件：
+- src\cad_inspector\detection\step_features.py
+- tests\test_step_features.py
+- outputs\extreme_round5\0_step_features.json
+我完成的事情：
+我用真实训练集 0.stp 做新增区域覆盖审计时发现，16 个合法水平 Face 既不属于顶部带，也不属于底部带，原实现没有把它们放入任何角色区域。新增的覆盖审计因此正确暴露了漏面。我没有放宽审计，而是增加 horizontal_other_candidates 兜底角色，把水平但不在顶部/底部带内的 Face 单独分类并保留解释性警告。修复后真实 0.stp 的 280 个有效 Face 全部进入区域，区域数量为 25，覆盖率为 1.0，分类状态恢复为 BASELINE。
+我执行的验证：
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider tests\test_step_features.py：7 passed；.venv\Scripts\python.exe -B -m compileall -q src tests scripts：通过；真实 0.stp step-feature-classify：BASELINE，face_count=280，valid_face_count=280，unclassified_valid_face_count=0，region_count=25，horizontal_other=16。
+我保留的限制：
+BASELINE 仍然只是可解释几何分类基线，不代表外部面、内部腔体、拔模方向或 G0/G1/G2 连续性已经完成工业确认。
+
+
+===== 开发记录 2026-10-03T04:25:26+08:00 =====
+标题：我方完成当前版本 BOM、语义证据、阶段6和报告同步
+状态：已完成并通过全量回归
+涉及文件：
+- src\cad_inspector\domain\bom.py
+- src\cad_inspector\io\step_bom.py
+- src\cad_inspector\output\bom_report.py
+- src\cad_inspector\bom_cli.py
+- src\cad_inspector\io\step_faces.py
+- src\cad_inspector\detection\step_parting.py
+- tests\test_step_bom_ocp.py
+- reports\最新甲方第一人称版_长计划与实施方案_2026-10-02.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- README.md
+我完成的事情：
+我方根据当前实际 DOCX 和 RAR 重新区分任务书要求与用户额外要求；新增 XCAF/STEPCAF 装配树 BOM 基线，输出组件数量、包围盒尺寸、拓扑计数、表面积、体积、类别候选和 UTF-8 CSV；新增 Face 内外语义实体分类证据并把默认采样上限收紧到 16，复杂模型超限项保持 UNRESOLVED/resource_guard；新增阶段6 OCP 延伸分型面质量门禁，记录闭合边界、源 Solid、截交和穿透证据；同步最新甲方计划、完整汇报、README 和历史报告追加说明。
+我执行的验证：
+全量无缓存 pytest：96 passed in 14.45s；compileall：通过；pip check：No broken requirements found；BOTTLE BOM：BASELINE，2 个组件，JSON/CSV 成功；BOTTLE 区域：BASELINE，311 Face，step-feature-classification-1.3；mould_04：REVIEW_REQUIRED，4974 Face；阶段6 OCP 盒体专项通过。
+我保留的限制：
+BOM 类别、材料、采购规格仍需主数据和人工复核；Face 编号依赖读取顺序；语义采样是证据级有限采样；XT/PRT、99%准确率、3分钟性能和工业级过渡曲面仍未验收。
+
+
+===== 开发记录 2026-10-03T04:28:11+08:00 =====
+标题：我方完成旧阶段3重复输出和可再生缓存清理
+状态：清理完成
+涉及文件：
+- outputs\stage3_features
+- outputs\stage3_regions
+- outputs\stage3_regions_v3
+- outputs\bom_bottle
+我完成的事情：
+我方先核对绝对路径均位于 D:\\STP_STL_Missing_Region_Recognition 内，再删除已被当前 stage3_regions_v3 替代的旧 stage3_features 和 stage3_regions；清理项目根 pytest 缓存以及 src、tests、scripts 下的 __pycache__。我方保留原始 CAD、provided 数据、.venv、当前 v3 区域报告、BOM JSON/CSV、正式报告和压力审计证据。
+我执行的验证：
+旧阶段3重复输出释放约 8.82 MB；12 个缓存目录释放约 0.85 MB；删除后旧目录不存在；当前关键输出和本项目进程仍需最终只读核验。
+我保留的限制：
+外部流程再次运行 Python 后仍可能重新生成可再生缓存；我没有删除 .venv 内部第三方缓存、原始数据或不可再生证据。
+
+
+===== 开发记录 2026-10-03T04:30:08+08:00 =====
+标题：我方完成最终只读核验并收尾
+状态：当前版本收尾完成
+涉及文件：
+- outputs\stage3_regions_v3
+- outputs\bom_bottle
+- reports\最新甲方第一人称版_长计划与实施方案_2026-10-02.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+我完成的事情：
+我方最终确认当前 v3 区域 JSON、BOM JSON/CSV、最新计划、最新完整汇报均存在；旧阶段3重复目录已删除；项目源码、tests、scripts 下无 __pycache__，项目根无 .pytest_cache；没有项目相关 Python 进程继续运行。
+我执行的验证：
+只读核验：outputs 总体约 24.07 MB；BOTTLE 区域 BASELINE/311 Face/141 regions；mould_04 REVIEW_REQUIRED/4974 Face/Shape invalid；BOM BASELINE/2 components；project_python_processes=0；pycache_count=0；pytest_cache=False。
+我保留的限制：
+后续任何 Python、pytest 或压力脚本都可能重新生成可再生缓存；当前 96 passed 结果对应本轮清理前的无缓存回归，报告和代码未在清理后改动。
+
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成 BOM 重复实例合并和 D 盘空间收尾
+状态：已完成并通过多轮验证
+涉及文件：
+- src\cad_inspector\domain\bom.py
+- src\cad_inspector\io\step_bom.py
+- src\cad_inspector\output\bom_report.py
+- tests\test_step_bom_ocp.py
+- README.md
+- reports\最新甲方第一人称版_长计划与实施方案_2026-10-02.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- outputs\bom_bottle\BOTTLE.bom.json
+- outputs\bom_bottle\BOTTLE.bom.csv
+我完成的事情：
+我方将 BOM 的装配遍历改为叶级 occurrence 递归，并区分 occurrence label 与参考 Shape label。我方按参考 Shape 合并重复实例，数量写入 occurrence_count 和 quantity，保留实例编号、实例路径、参考 Shape 编号，JSON schema 升级为 mold-bom-1.1。我方加入重复实例聚合测试，并同步甲方第一人称计划书、完整汇报、完成情况报告书和 README。
+我方完成正式 BOTTLE BOM 回写后，删除了临时 bom_bottle_v11、项目范围内 __pycache__ 和 .pytest_cache，释放约 15.71 MB；原始 CAD、provided 数据、虚拟环境主体、正式输出、测试和报告均保留。
+我执行的验证：
+BOM 定向测试 2 passed；全量无缓存 pytest 97 passed；compileall 通过；真实 BOTTLE BOM 为 BASELINE，2 个唯一参考 Shape、2 个 occurrence；正式 CSV 含实例数量和装配路径字段；清理后项目缓存目录为 0。
+我保留的限制：
+当前仍是几何 BOM 基线，不能自动提供材料、采购规格或工业类别；需要重复实例、嵌套子装配和同名异形的真实甲方样本继续验证跨 CAD 导出差异。
+
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成 BOM 属性来源和局部坐标证据补充
+状态：已完成并通过全量回归
+涉及文件：
+- src\cad_inspector\domain\bom.py
+- src\cad_inspector\domain\bom_master_data.py
+- src\cad_inspector\io\bom_master_data.py
+- src\cad_inspector\io\step_bom.py
+- src\cad_inspector\output\bom_report.py
+- src\cad_inspector\bom_cli.py
+- tests\test_step_bom_ocp.py
+- configs\bom_master_data.example.json
+- outputs\bom_bottle\BOTTLE.bom.json
+- outputs\bom_bottle\BOTTLE.bom.csv
+我完成的事情：
+我方将 BOM schema 升级到 mold-bom-1.4，修正 quantity 与 occurrence_count 的一致性，新增名称类别规则、XCAF 材料读取、主数据精确匹配、采购规格来源、输入 SHA256 和 occurrence 局部变换矩阵。我方加入 7 条 BOM 定向测试，并用 CLI 冒烟确认主数据参数确实覆盖类别。示例主数据只提供类别，不包含伪造材料。
+我执行的验证：
+定向测试 7 passed；全量 pytest 108 passed；compileall 通过；pip check 无断依赖；正式 BOTTLE JSON schema mold-bom-1.4、2 个组件、2 个 occurrence；清理后缓存目录为 0。
+我保留的限制：
+主数据必须由甲方提供；局部矩阵仍需要嵌套装配样本验证全局合成；当前 BOTTLE 没有 XCAF 材料属性，不能自动补材料。
+
+
+===== 开发记录 2026-10-02 =====
+标题：我方删除工程特征空重复目录
+状态：已完成
+涉及文件：
+- outputs\step_engineering_round1
+- outputs\step_engineering_repeat
+我完成的事情：
+我方确认正式工程特征目录仍包含 BOTTLE 和 mould_04 的 JSON/CSV 输出，round1 与 repeat 仅剩空子目录，因此删除两个重复目录以节省 D 盘空间。
+我执行的验证：
+正式输出目录存在；两个重复目录不存在；没有删除正式证据或输入数据。
+我保留的限制：
+工程特征仍是可解释候选，不能代替最终型腔、型芯、分型线、分型面或加工工艺验收。
+
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成最新汇报的 BOM 状态一致性修复
+状态：已完成
+涉及文件：
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+我完成的事情：
+我方删除了最新完整汇报中关于“重复参考形状合并尚未实现”的过时表述，改为当前已实现基线并保留真实重复装配样本、嵌套子装配和跨 CAD 导出差异的后续验收边界。
+我执行的验证：
+我方确认报告旧句已替换，正式 BOM JSON 和 CSV 未被改动，项目范围没有新增缓存目录。
+我保留的限制：
+文档修正不代表材料主数据、采购规格、XT/PRT 和工业级验收已经完成。
+
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成模具工程特征候选阶段和最终 TXT 同步
+状态：已完成
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\domain\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\output\step_engineering_report.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\cli.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\最新甲方第一人称版_长计划与实施方案_2026-10-02.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+
+我完成的事情：
+我方复用现有 STEP Face/Edge 数据，新增台阶、圆柱/孔壁、R 角和拔模方向候选证据。正式命令是 `python -m cad_inspector step-engineering-features`，正式输出目录是 `outputs\step_engineering`。
+我方把附件要求和用户直接要求分开登记：`514.docx` 是任务书，`144.rar.wxdownload` 在本轮不存在；我方没有将附件时间条款改写成新的承诺，也没有虚构缺失压缩包内容。
+
+我执行的验证：
+新模块 6 passed；全量无缓存回归 107 passed；compileall 通过；pip check 通过；BOTTLE 为 BASELINE/311 Face/443 候选；mould_04 为 REVIEW_REQUIRED/4974 Face/9150 候选；正式 6 个 JSON/CSV 文件可重解析；BOTTLE 重复运行输出一致；非法方向和负阈值正确返回 2。
+
+我方保留的限制：
+当前结果仍是可解释工程候选，不是最终自动分型。后续还要用甲方标注数据完成准确率、性能、XT/PRT、分型线桥接、分型面连续性和实体穿透验收。
+
+
+===== 开发记录 2026-10-02 =====
+标题：我方新增 BOM 原生 Excel 文件输出
+状态：已完成并通过回归
+涉及文件：
+- src\cad_inspector\output\bom_report.py
+- src\cad_inspector\bom_cli.py
+- tests\test_step_bom_ocp.py
+- outputs\bom_bottle\BOTTLE.bom.xlsx
+- README.md
+- reports\最新甲方第一人称版_长计划与实施方案_2026-10-02.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+我完成的事情：
+我方使用标准库写出原生 XLSX，保留 JSON/CSV，并增加 BOM 工作表、中文字段、数字单元格、列宽、表头样式、自动筛选和冻结首行。没有安装 openpyxl 或其他大型插件。
+我执行的验证：
+BOM 定向测试 7 passed；全量回归 109 passed；pip check 通过；真实 BOTTLE XLSX ZIP/XML 校验通过；正式三种输出均存在。
+我保留的限制：
+当前没有 Excel/LibreOffice 命令行，因此尚未做桌面软件实际打开测试；甲方需要在目标环境确认打印和模板兼容性。
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成 BOM 1.5 和当前最终状态同步
+状态：已完成
+我方完成的事情：
+我方把当前 BOM schema、全局 occurrence 矩阵、CSV 字段、测试数字和最终边界同步到 README、长计划、完整汇报和完成情况报告。我方确认 `global_matrix_3x4` 是按父级到子级 occurrence 路径合成的可审计矩阵，保留局部矩阵作为原始证据，不把它扩大成跨 CAD 工程最终坐标承诺。
+
+我方执行的验证：
+1. BOM 定向测试 8 passed。
+2. 全量无缓存回归 110 passed。
+3. compileall 通过。
+4. pip check 通过。
+5. BOTTLE 正式 JSON/CSV/XLSX 存在且 JSON schema 为 mold-bom-1.5。
+
+我方清理结果：
+我方清理本轮测试和编译产生的项目级 `__pycache__`、`.pytest_cache`，保留原始输入、`.venv`、源码、测试、正式输出和报告，不删除不可再生资产。
+
+我方保留限制：
+当前结果仍是可审计 BOM 几何基线。真实嵌套装配样本、跨 CAD 坐标规则、材料和采购主数据、XT/PRT、工业准确率、性能、GUI、安装包和 Excel 桌面验收尚未完成。
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成同轴度与孔阵列候选增强
+状态：已完成
+我方把圆柱面半径、轴线起点和轴线方向接入 Face 特征；我方按量化轴线分桶生成同轴阵列候选，并增加轴线角度和距离参数。
+
+我方验证：
+Face/工程特征定向测试 11 passed；全量回归 116 passed；BOTTLE 为 BASELINE/444 候选/1 个同轴阵列候选；mould_04 为 REVIEW_REQUIRED/9290 候选/140 个同轴阵列候选；正式输出已重新生成。
+
+我方保留限制：
+同轴候选只是几何证据，不等于孔阵列、标准件、导向件或最终加工语义。
+
+===== 开发记录 2026-10-02 =====
+标题：我方修正 README 当前复核日期
+状态：已完成
+我方把 README 当前收尾复核日期统一为适用当前日期 `2026-10-02`，没有改变代码、测试、正式输出或验收边界。
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成阶段 3 工程特征增强
+状态：已完成
+我方完成的事情：
+我方以甲方第一人称把平面角色、孔壁拓扑代理、拔模方向汇总和质量门禁写入 `step-engineering-features-1.1`。我方复用已有 Face/Edge 特征，不新增大型依赖；我方发现平面分组内部的 `score` 实际是面积后，改为输出 `area_mm2`。
+
+我方执行的验证：
+工程特征专项 9 passed；全量无缓存回归 114 passed；BOTTLE 为 BASELINE/311 Face/443 候选；mould_04 为 REVIEW_REQUIRED/4974 Face/9150 候选，其中 193 个圆柱/孔壁候选需要拓扑复核。两套真实正式输出已重新生成。
+
+我方保留限制：
+孔壁闭合边界目前是代理证据，不等于完整 Wire 闭合、轴向连续和最终孔识别；拔模方向仍需甲方坐标规则确认。
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成分型缝合状态一致性修复和正式证据更新
+状态：已完成
+
+我方以甲方第一人称完成了以下工作：
+1. 我方把已有 OCP 配置 `section_tolerance_mm`、`curve_samples_per_edge` 和 `transition_offset_mm` 暴露到专用 CLI。
+2. 我方把 `sewing_status` 改为实际过渡曲面缝合状态，不再保留过时的“未执行”结论。
+3. 我方补充 CLI 参数传递测试，并更新阶段 6 限制说明。
+4. 我方按 `PYTHONPATH=src` 正式启动方式重跑 BOTTLE 和 mould_04，覆盖两个正式分型目录。
+
+我方验证结果：
+1. 定向测试 6 passed。
+2. 全量无缓存测试 117 passed。
+3. compileall 和 pip check 通过。
+4. 两份正式 JSON 的 schema 为 `parting-1.4`，偏移高度为 5.5 mm。
+5. BOTTLE 状态为 BASELINE，缝合状态为 SEWN_OPEN_SHELL，自由边 8 条。
+6. mould_04 状态为 REVIEW_REQUIRED，缝合状态为 SEWN_OPEN_SHELL，自由边 16 条。
+7. 6 个正式 STEP 全部可重新读取，JSON、artifacts 和输出文件存在性检查通过。
+
+我方记录的失败与改进：
+第一次直接运行模块未设置 `PYTHONPATH=src`，出现 `ModuleNotFoundError`；我方没有修改算法来掩盖启动问题，而是补齐项目启动前置条件，并将命令写入 README 和报告。
+
+我方空间边界：
+我方保留正式缝合证据，删除范围只限项目源码、测试和脚本目录下可再生缓存与重复临时输出；不删除原始 CAD、provided 数据、.venv、源码、测试和报告。
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成最终空间和进程核验
+状态：已完成
+
+我方以甲方第一人称确认：
+1. 当前工程仍在 `D:\STP_STL_Missing_Region_Recognition`。
+2. 项目源码、测试和脚本目录的可再生缓存目录为 0。
+3. D 盘剩余约 `188.18 GiB`。
+4. 我方没有发现当前项目自己的运行进程；其他 Python 进程属于外部目录，我方没有结束。
+5. 正式输出、原始数据、虚拟环境、测试和报告均保留。
+
+===== 开发记录 2026-10-02 =====
+标题：我方完成主目标缺失区域有向证据实现
+状态：已完成
+
+我方以甲方第一人称完成：
+1. 我方增加有向证据配置、法向容差校验和 CLI 开关。
+2. 我方使用源 Face 法向、最近点位移和目标 Face 法向一致性，对双向检测生成辅助证据。
+3. 我方把证据按 Face 和连通区域聚合，输出方向标签、平均有向偏移、法向一致性和有效采样计数。
+4. 我方将检测结果 schema 升级为 `missing-region-detection-1.1`，并同步 JSON/CSV 输出。
+
+我方验证：
+1. 定向与极端测试 20 passed。
+2. 全量无缓存测试 121 passed。
+3. compileall、pip check 通过。
+4. 真实训练集 0.stp/0.stl 联调正常返回 review，质量告警和采样覆盖门禁正常保留。
+5. 临时联调目录已删除。
+
+我方限制：
+有向证据只用于解释表面偏移和边界/拓扑变化，不能单独证明缺失、额外材料、孔洞、实体内外或最终加工语义；我方保留人工复核状态。
+
+===== 2026-10-03 区域部件类别候选与最终多轮验收 =====
+状态：已完成
+
+我方本轮继续在 D 盘工程中推进区域级实现。我方复用已有 Face、Edge、区域尺寸、曲面类型、圆柱轴线、圆弧 Edge、邻接和实体内外采样证据，没有增加大型依赖或重复读取流程。
+
+我方完成的实现：
+1. 我方把工程特征 schema 从 `step-engineering-features-1.3` 升级为 `step-engineering-features-1.4`。
+2. 我方给 `StepEngineeringRegion` 增加 `category_candidates`、`category_confidence`、`category_evidence` 和 `category_review_required`。
+3. 我方增加板件、轴类、导向件/导套、顶出件、成型面和结构件六类几何候选规则。
+4. 我方把平面比例、圆柱比例、包围盒长宽高比、圆弧 Edge 数、轴线证据、同轴候选、邻接数量和实体内外语义写入类别证据。
+5. 我方对低置信度、混合曲面、类别不唯一和未解析语义统一保留人工复核，不把几何启发式写成最终行业类别。
+6. 我方同步区域 CSV，新增类别候选、类别置信度、类别复核状态和类别证据列。
+7. 我方修复孔拓扑复核计数缺陷：只要圆柱候选未形成闭合边界代理或实体语义未解析，就会计入拓扑复核，不再依赖候选名称是否已被写成孔壁。
+
+我方正式结果：
+1. BOTTLE：`BASELINE`，schema `step-engineering-features-1.4`，311 个 Face、444 个候选、141 个区域；类别复核区域 137 个。类别候选计数为：板件 68、轴类 2、导向件/导套 2、结构件 46。
+2. mould_04：`REVIEW_REQUIRED`，schema `step-engineering-features-1.4`，4974 个 Face、9290 个候选、1393 个区域；类别复核区域 1392 个。原始 Shape 无效性仍然保留，没有被区域规则覆盖。
+3. 两套正式 JSON、候选 CSV、拔模 CSV 和区域 CSV 均已按最新代码重新生成。
+4. 两套正式区域输出均完成 Face 全覆盖，区域编号唯一，CSV 行数与 JSON 区域数一致，新增类别字段可解析。
+
+我方多轮验证：
+1. 工程特征定向测试：16 passed。
+2. 全量无缓存回归：130 passed。
+3. `compileall`：通过。
+4. `pip check`：`No broken requirements found`。
+5. 合成极端区域测试覆盖六类候选、混合曲面、未解析语义、圆柱半径不一致和序列化稳定性。
+
+我方空间处理：
+我方只删除项目范围内可再生的 `__pycache__`、`.pytest_cache` 和临时联调缓存；保留 `data\raw`、`data\provided`、`.venv`、源码、测试、正式输出和全部 TXT 报告。我方没有删除不可再生的 CAD 原始文件。
+
+我方后续 AI 关键词：
+`STEP B-Rep`、`OCP`、`Face/Edge`、`区域级工程证据`、`板件候选`、`轴类候选`、`导向件导套候选`、`顶出件候选`、`成型面候选`、`结构件候选`、`语义复核门禁`、`闭合边界代理`、`同轴孔阵列`、`人工标注验收`、`不宣称最终型腔型芯`。
+
+我方仍保留的边界：
+这些类别仍是几何候选，不等于零件名称、标准件规格、型腔、型芯、镶件、最终分型面、加工工艺或工业准确率。XT/PRT 原生解析、真实标注集准确率、GUI、安装包、性能和加工验收仍需后续专项完成。
+
+===== 2026-10-03 区域邻接过渡证据补充 =====
+状态：已完成并通过回归
+
+我方继续按区域边界补充代码。我方没有另建第二套拓扑结构，而是复用已有共享 Edge 连通区域和邻接区域编号，增加以下可审计证据：
+1. 邻接区域的源角色和实体语义状态。
+2. 顶部平面到侧壁、底部平面到侧壁、水平其他到侧壁、倾斜面到侧壁等角色过渡候选。
+3. 同角色边界、其他角色过渡和台阶/R 角/圆柱/同轴候选的边界关联。
+4. 引用了不存在邻接区域时的缺失编号审计和人工复核警告。
+5. 全局 `boundary_transition_counts`，供后续 AI 按区域关系筛选。
+
+我方将工程特征 schema 更新为 `step-engineering-features-1.5`。正式 BOTTLE 和 mould_04 输出已重新生成，新增证据写入 JSON 区域 `evidence.neighbor_evidence`，区域 CSV 继续通过证据列保留完整内容。
+
+我方验证：
+1. 工程特征定向测试：17 passed。
+2. 全量无缓存回归：136 passed。
+3. `compileall`：通过。
+4. `pip check`：`No broken requirements found`。
+5. 两套正式 JSON/CSV 的区域编号、Face 覆盖率和字段解析继续通过。
+
+我方限制：
+角色过渡只表示区域拓扑关系，不能直接解释成最终分型线、加工顺序、装配关系或型腔/型芯边界。当前仍需要真实工程标注验证。
+
+===== 2026-10-03 缺失区域回溯 STEP 工程区域 =====
+状态：已完成并通过真实烟囱验证
+
+我方补充了 `src\cad_inspector\detection\step_region_join.py`，把缺失/多余区域已有的 STEP Face 编号可选地连接到工程区域 JSON。
+
+我方完成：
+1. `RegionResult` 增加候选/参考 STEP 工程区域编号和两侧类别候选字段。
+2. `inspect_pair` 增加参考和候选工程区域 JSON 的可选参数。
+3. `cad-inspector inspect` 增加 `--reference-engineering-json` 和 `--candidate-engineering-json`。
+4. JSON/CSV schema 更新为 `missing-region-detection-1.2`，记录区域回溯字段和全局连接诊断。
+5. 工程区域索引损坏、schema 不识别、区域引用缺失或 Face 无法回溯时，统一降级 `review`。
+6. 未提供工程区域 JSON 时保持原有检测行为，不要求用户额外准备文件。
+
+我方验证：
+1. 区域连接定向测试：11 passed。
+2. 全量无缓存回归：139 passed。
+3. `compileall`：通过。
+4. `pip check`：`No broken requirements found`。
+5. 真实 `训练集\0.stp`/`0.stl` 烟囱：工程索引有效、连接开关为 True，检测 schema 为 `missing-region-detection-1.2`，最终状态按输入质量门禁保持 `review`。
+6. 临时烟囱目录已删除，没有污染正式输出。
+
+我方限制：
+当前回溯仍依赖现有 STEP Face 读取顺序和三角面映射；跨 CAD 导出文件的永久稳定拓扑 ID、真实标注准确率和最终行业类别仍未完成。
+
+
+===== 开发记录 2026-10-03T10:43:25+08:00 =====
+标题：我方完成区域语义与 STEP 拓扑质量门禁修复
+状态：我方已完成并保留人工复核边界
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\io\step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我完成的事情：
+我方删除了不会被调用的重复同轴孔阵列实现，只保留资源受控的量化轴线分桶实现。我方让圆柱候选读取实体内外语义：实体外部圆柱面标记为 EXTERNAL_CYLINDER_FACE_CANDIDATE，实体内腔且拓扑代理成立时才计入内部孔洞候选，未采样或不稳定语义进入复核。工程汇总新增几何孔壁代理、内部孔洞支持、外部圆柱和语义未解析四类计数。我方把 STEP 拓扑报告升级为 step-topology-1.1，加入开放边、流形边、非流形边、零面邻接边和最大 Face 邻接统计，并在开放边或非流形边存在时保持 REVIEW_REQUIRED。
+我执行的验证：
+我方执行工程特征和 STEP 拓扑定向测试，共 18 passed；compileall 通过；pip check 无断依赖；BOTTLE 正式工程输出为 step-engineering-features-1.4、311 Face、444 候选，4 个圆柱候选语义未解析并进入复核；mould_04 为 REVIEW_REQUIRED、4974 Face、9290 候选；两份正式拓扑 JSON 已写出 step-topology-1.1。
+我保留的限制：
+我方仍不把闭合边界代理解释成最终孔洞；完整 Wire、贯通方向、装配层级、XT/PRT、标注准确率和工业加工验收继续保留为后续阶段
+
+
+===== 开发记录 2026-10-03T10:52:28+08:00 =====
+标题：我方完成本轮全量验收与空间收尾
+状态：我方已完成本轮闭环并保留真实工程限制
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\io\step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我完成的事情：
+我方完成 136 项全量回归、118 个 JSON 和 51 个 CSV 的结构化可读性检查、正式输出存在性检查和 D 盘空间清理。我方最终保留源码、测试、原始输入、正式输出、虚拟环境和 TXT 报告，删除所有可再生缓存，并确认没有项目运行进程。
+我执行的验证：
+全量 pytest 136 passed；compileall 通过；pip check 通过；BOTTLE/mould_04 工程 JSON 为 step-engineering-features-1.5，拓扑 JSON 为 step-topology-1.1；D 盘剩余约 188.17 GiB；缓存目录 0。
+我保留的限制：
+我方仍保留实体语义采样上限、孔洞代理证据、开放边/非流形质量风险以及 XT/PRT、真实准确率、性能和工业验收边界。
+
+
+===== 开发记录 2026-10-03T10:58:53+08:00 =====
+标题：我方修复区域工程回溯索引的静默覆盖风险
+状态：我方已完成并验证
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_region_join.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_region_join.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我完成的事情：
+我方不再允许重复区域编号覆盖旧记录，空 Face 列表和错误类别字段会被明确标记为无效索引并进入复核。这样缺失区域到工程区域、类别候选和 BOM 追溯链路不会静默产生错误关联。
+我执行的验证：
+定向测试 22 passed；全量测试 141 passed；compileall 通过；正式输出保持可读。
+我保留的限制：
+我方仍不把区域类别候选解释成最终行业类别，仍需真实装配层级、主数据和甲方标注确认。
+
+
+===== 开发记录 2026-10-03T11:04:39+08:00 =====
+标题：完成区域工程回归、正式输出审计和临时空间清理
+状态：本轮完成并通过全量验收
+涉及文件：
+- src\cad_inspector\detection\step_features.py
+- src\cad_inspector\io\step_faces.py
+- tests\test_step_features.py
+- tests\test_step_faces_ocp.py
+- tests\test_extreme_cases.py
+- outputs\step_engineering\BOTTLE\BOTTLE.engineering.json
+- outputs\step_engineering\mould_04\mould_04.engineering.json
+我完成的事情：
+我方完成真实区域分类、Face 编号审计、STEP 语义采样分支和大模型回归。中间水平 Face 已纳入 horizontal_other 兜底区域，重复或非法 Face 编号、损坏 STEP Face 映射和区域回溯索引均会进入 REVIEW_REQUIRED，不再静默覆盖。mould_04 真实大模型本轮未生成新的临时 JSON，我方保留已有正式工程输出，不重复占用资源。正式 BOTTLE 与 mould_04 JSON 均完成解析，区域编号唯一，Face 覆盖分别为 311/311 和 4974/4974；区域 CSV 行数与 JSON 区域数一致，CSV 使用中文列名并保留类别、证据和邻接证据字段。
+我执行的验证：
+全量无缓存 pytest：141 passed；定向回归累计 22 passed；compileall：通过；pip check：No broken requirements found；正式工程 JSON：BOTTLE=step-engineering-features-1.5/BASELINE/311 Face/141 区域，mould_04=step-engineering-features-1.5/REVIEW_REQUIRED/4974 Face/1393 区域；阶段 3 JSON：BOTTLE=BASELINE、mould_04=REVIEW_REQUIRED；正式 JSON 无 NaN/Infinity；项目缓存目录复核为 0；临时 extreme_round5 目录已删除。
+我保留的限制：
+我方仍不宣称 mould_04 的无效 Shape 已修复，不宣称实体内外、最终部件类别、XT/PRT、真实准确率、5 分钟性能、GUI、安装包、最终分型面、G0/G1/G2 或生产验收已经完成。
+
+
+===== 开发记录 2026-10-03T11:08:41+08:00 =====
+标题：同步最终区域回归结果到 README 和完整报告书
+状态：已同步完成
+涉及文件：
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方把本轮真实区域覆盖、Face 编号审计、STEP 语义采样修复、正式 JSON/CSV 结构化验收、141 项全量回归和空间清理结果同步到 README 与完整报告书。我方明确保留 BOTTLE 的 BASELINE 和 mould_04 的 REVIEW_REQUIRED，不把候选证据写成工业级通过。
+我执行的验证：
+README 和报告书追加段落已写入；此前全量 pytest 为 141 passed，compileall 和 pip check 已通过；本轮没有重新运行会产生缓存的命令。
+我保留的限制：
+报告仍保留 XT/PRT、真实准确率、性能、最终部件类别、实体修补、封闭分型面、G0/G1/G2、GUI、安装包和生产验收边界。
+
+
+===== 开发记录 2026-10-03T11:10:31+08:00 =====
+标题：最终清理缓存并固定 D 盘交付终态
+状态：已完成
+涉及文件：
+- reports\开发过程记录_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方在 README、完整报告书和开发日志同步完成后，删除了本轮测试和记录动作产生的可再生 __pycache__ 与 .pytest_cache。删除前我方确认所有目标均位于 D 盘项目根目录内，删除后不再运行会生成缓存的 Python 命令。
+我执行的验证：
+PowerShell 只读复核：项目范围缓存目录数为 0；临时 outputs\\extreme_round5 不存在；正式 BOTTLE/mould_04 JSON 和区域 CSV 仍存在，JSON/CSV 行数与区域数量一致；此前全量 pytest=141 passed，compileall 和 pip check 已通过。
+我保留的限制：
+我方没有删除 data\\raw、data\\provided、.venv、源码、测试、正式 outputs 或任何正式 TXT 报告。
+
+
+===== 开发记录 2026-10-03T11:18:19+08:00 =====
+标题：新增后续 AI 技能与工具清单 TXT
+状态：已完成并写入 D 盘
+涉及文件：
+- reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+我完成的事情：
+我方新增独立 TXT，集中记录 documents、pdf、spreadsheets、presentations、imagegen、visualize、computer-use、tabbit、openai-docs、skill-installer、skill-creator、template-creator 和 pony-tail 等后续 AI 工具入口，并写入 D 盘固定提示词、区域实现关键词、测试要求、清理规则和工业验收边界。
+我执行的验证：
+新增 TXT 已写入并可读取；使用 python -B 追加日志，没有重新生成项目缓存；此前最终状态仍为全量 pytest 141 passed、正式 JSON/CSV 可读、缓存目录 0。
+我保留的限制：
+技能清单只说明可用工具入口，不代表 XT/PRT、GUI、准确率、性能或工业最终验收已经完成。
+
+
+===== 开发记录 2026-10-03T11:18:39+08:00 =====
+标题：我方修复 STEP 复杂 Shape 拓扑孤立 Edge 误报并完成终态回归
+状态：我方已完成并通过全量验收
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\io\step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方确认旧版 MapShapesAndAncestors_s 在 BOTTLE 复杂 Shape 上把大量带方向或位置的 Edge 索引误计为零 Face 祖先，造成 zero_face_edge_count=84104。 我方改为逐 Face 建立局部 Edge 索引并汇总唯一 Edge，新增 unique_edge_count、face_edge_occurrence_count 和 topology_index_method=face_local_map；保留兼容字段但不再把孤立索引实例当作真实几何零面边。我方同步更新 README、完整报告书和本轮开发记录。第一次真实 CLI 复算因漏设 PYTHONPATH=src 被启动器拒绝，随后按正式方式补齐并成功复算。
+我执行的验证：
+定向 pytest 2 passed；全量 pytest 145 passed；compileall 通过；pip check 返回 No broken requirements found；outputs 下 116 个 JSON 全部解析成功；BOTTLE 为 838 唯一 Edge、1539 Face-Edge 关联、185 边界边、48 非流形边、zero_face_edge_count=0；mould_04 为 11546 唯一 Edge、22852 Face-Edge 关联、240 边界边、zero_face_edge_count=0。
+我保留的限制：
+本轮修复统计口径，不修复原始开放边、非流形边或 mould_04 无效 B-Rep；XT/PRT、真实准确率、性能、最终分型面和工业验收仍需后续专项。
+
+===== 2026-10-03 最终回归和空间收尾补充 =====
+标题：我方完成最后一轮验证、报告补齐和可再生文件清理
+状态：我方已完成本轮交付收尾，但仍保留真实工程复核边界
+我方完成的事情：
+我方确认 mould_04 正式工程命令按预期返回 REVIEW_REQUIRED，退出码为 1 的原因是原始 B-Rep Shape 无效。我方保留了这个质量门禁，没有把它改写成成功，也没有删除正式输出。
+我方最终核验 BOTTLE：step-engineering-features-1.5、BASELINE、311 个 Face、444 个候选、141 个区域、311/311 Face 覆盖；mould_04：step-engineering-features-1.5、REVIEW_REQUIRED、4974 个 Face、9290 个候选、1393 个区域、4974/4974 Face 覆盖。两份区域 CSV 行数与区域数一致。
+我方把几何签名结果纳入最终记录：BOTTLE 为 311 个唯一签名、0 个重复；mould_04 为 4945 个唯一签名、29 个重复。几何签名用于当前报告内的可追溯证据，不被我方冒充成跨 CAD 永久稳定 ID。
+我方按节省 D 盘空间的原则保留当前正式输出集，对现有 outputs 下 19 个 JSON 和 10 个 CSV 完成机器检查，全部 JSON 可解析，没有 NaN、Infinity 或 -Infinity；旧演示和压力临时输出不再计入当前交付集。该段记录的 144 passed 属于此前区域回归轮次，随后拓扑统计修复轮次为 145 passed，最终类型契约修正后的全量回归为 149 passed；compileall 通过，pip check 为 No broken requirements found，历史过程记录均保留。
+我方删除项目根目录内 12 个可再生缓存目录，清理后 __pycache__ 和 .pytest_cache 均为 0。最终复核没有项目 Python 进程。D 盘剩余约 188.19 GiB；我方保留原始数据、provided 数据、.venv、正式 outputs、源码、测试和报告。
+我方本轮使用的工具和技能范围：
+1. PowerShell 只读审计和项目内安全清理。
+2. Python pytest、compileall、pip check。
+3. 现有 OCP/STEP 读取、工程区域、拓扑和输出审计模块。
+4. 现有 record_work.py 记录约定、JSON/CSV 结构化检查和正式报告链路。
+我方补充给后续 AI 的关键词：
+几何签名、face_geometry_signatures、稳定 CAD ID、跨 CAD 拓扑映射、区域覆盖审计、step-engineering-features-1.5、REVIEW_REQUIRED、原始 Shape 无效、人工复核、资源保护、149 passed、历史 144/145 passed、D 盘空间清理。
+我方保留的限制：
+我方仍不把几何签名、区域类别、邻接过渡、孔壁代理或拔模候选写成最终工业结论；XT/PRT、真实标注准确率、80% 准确率、5 分钟性能、最终型腔/型芯、封闭分型面、实体布尔、G0/G1/G2、GUI、安装包和生产验收仍需后续专项。
+
+===== 开发记录 2026-10-03T12:57:03+08:00 =====
+标题：我方完成区域复核队列阶段的终态收尾
+状态：我方已完成本轮实现、验证、正式输出和空间清理
+我方完成的事情：
+我方执行 compileall 并通过，执行 pip check 并得到 No broken requirements found；我方调用受保护的项目缓存脚本，确认四类可再生缓存目录最终为 0。
+我方只读审计 outputs：20 个 JSON、13 个 CSV 全部可读，没有 NaN、Infinity 或 -Infinity。BOTTLE 和 mould_04 正式工程 JSON 均为 step-engineering-features-1.6，区域 Face 覆盖完整，所有区域都有复核原因代码和优先级。
+我方确认 D 盘剩余约 188.19 GiB，项目 Python 进程为 0；我方没有删除原始 CAD、provided 数据、.venv、正式 outputs、源码、测试或 TXT 报告。
+我方最终验证：
+1. 区域专项 18 passed。
+2. 全量 pytest 160 passed in 21.92s。
+3. compileall 通过。
+4. pip check 无断依赖。
+5. BOTTLE 为 BASELINE/311 Face/444 候选/141 区域；mould_04 为 REVIEW_REQUIRED/4974 Face/9290 候选/1393 区域，1393 个 mould_04 区域均为 SHAPE_INVALID/HIGH。
+我方保留限制：
+我方仍不把区域复核队列写成最终 CAD 语义或工业验收；后续仍需真实标注集、永久拓扑 ID、XT/PRT、复杂实体修补、最终分型面、实体布尔、G0/G1/G2、GUI、安装包和生产验收。
+
+
+===== 开发记录 2026-10-03T11:26:19+08:00 =====
+标题：我方完成最终类型契约修正、149项回归与缓存终态清理
+状态：我方已完成
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\io\step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方把 edge_topology 注解修正为允许整数和字符串字段，避免 topology_index_method 的类型契约不准确。我方更新最终报告数字，并在最终回归后删除 compileall 产生的全部项目内可再生缓存。
+我执行的验证：
+最终全量 pytest 149 passed；compileall 通过；pip check 返回 No broken requirements found；最终缓存目录为 0；本轮临时拓扑日志为 0。
+我保留的限制：
+只清理可再生缓存和本轮临时日志；原始 CAD、provided 数据、.venv、源码、测试、正式输出和 TXT 报告均保留。
+
+
+===== 开发记录 2026-10-03T11:31:41+08:00 =====
+标题：我方校正最终报告中的历史测试数字并固定149项最终结果
+状态：我方已完成
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\开发过程记录_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方把报告中此前区域回归的144 passed、拓扑统计修复轮次的145 passed和最终类型契约修正后的149 passed明确区分，避免历史数字被误读为当前结果。
+我执行的验证：
+报告文本已完成一致性校正；当前最终结果固定为149 passed，且此前compileall、pip check和输出审计结果保持不变。
+我保留的限制：
+本次只修正报告数字说明，不改变源码、正式输出或测试行为。
+
+
+===== 开发记录 2026-10-03T11:35:07+08:00 =====
+标题：我方校正正式输出 JSON 总数并固定终态审计数字
+状态：我方已完成
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- D:\STP_STL_Missing_Region_Recognition\outputs\evaluation\synthetic_evaluation.json
+我完成的事情：
+我方确认 outputs 当前为 117 个正式 JSON、51 个 CSV，evaluation\synthetic_evaluation.json 是正式评估输出。我方同步修正当前报告统计并保留历史记录。
+我执行的验证：
+117 个 JSON 全部解析成功，51 个 CSV 全部可读。
+我保留的限制：
+不删除正式输出，不改变源码。
+
+
+===== 开发记录 2026-10-03T11:40:36+08:00 =====
+标题：我方固定空间精简后的正式输出统计并完成终态审计
+状态：我方已完成
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方确认当前 outputs 保留 19 个 JSON 和 10 个 CSV，包含核心正式输出，旧演示和压力临时输出不计入当前交付集。
+我执行的验证：
+当前正式 outputs 约 40.49 MiB，D 盘剩余约 188.20 GiB。
+我保留的限制：
+原始 CAD、源码、测试、.venv、正式输出和报告保留。
+
+
+===== 开发记录 2026-10-03T11:40:54+08:00 =====
+标题：我方完成 STEP Face 映射极端修复、全量回归与 D 盘空间收尾
+状态：我方已完成本轮闭环并通过验收
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\missing_regions.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_extreme_cases.py
+- D:\STP_STL_Missing_Region_Recognition\scripts\cleanup_regenerable_outputs.ps1
+- D:\STP_STL_Missing_Region_Recognition\scripts\cleanup_project_caches.ps1
+- D:\STP_STL_Missing_Region_Recognition\README.md
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方修复了 STEP Face 回溯映射只检查非负整数的边界缺陷。现在零值、布尔值、非有限值、非法声明计数、映射长度不一致和超过 face_count 的编号都会进入 review_required，且不会继续映射为工程区域。 我方增加了零值、布尔值、越界值、长度不一致和非法声明计数的极端测试。 我方清理了 23 个可重新生成的历史验证输出目标，释放约 14.7 MB；我方保留了正式 step_engineering、拓扑、阶段 3、BOM、Face 报告、原始 CAD、provided 数据、.venv、源码、测试和 TXT 报告。 我方新增两个有路径边界校验的 PowerShell 清理脚本，分别维护可再生 outputs 和项目缓存。
+我执行的验证：
+我方定向极端与区域回溯测试 39 passed；全量无缓存 pytest 161 passed；compileall 通过；pip check 返回 No broken requirements found；剩余 19 个 JSON 和 10 个 CSV 全部可读；未发现 NaN、Infinity 或 -Infinity；10 个正式输出全部存在；项目缓存目录最终为 0。
+我保留的限制：
+我方仍不把 BASELINE 写成工业级自动验收，也不把 REVIEW_REQUIRED 改成成功。跨 CAD 永久拓扑 ID、XT/PRT 原生读取、真实标注准确率、性能、复杂实体修补、最终封闭分型面、实体布尔、G0/G1/G2、GUI、安装包和生产验收仍需专项。
+
+===== 开发记录 2026-10-03T12:50:30+08:00 =====
+标题：我方按不同区域补充机器可读复核队列
+状态：我方已完成代码实现、真实输出重生成和多轮测试
+我方完成的事情：
+我方为 `StepEngineeringRegion` 增加 `review_reason_codes` 和 `review_priority`。我把 Shape 无效、语义未解析、资源保护、边界 Edge、缺失邻接、混合候选、类别低置信度等区域问题统一成稳定原因代码，并按 HIGH、MEDIUM、LOW、NONE 给出复核顺序。
+我方把工程特征 schema 从 `step-engineering-features-1.5` 升级为 `step-engineering-features-1.6`，全局增加原因计数和优先级计数，区域 CSV 增加复核优先级和复核原因代码。
+我方新增极端区域测试，覆盖无效 Shape、资源保护、空工程候选、缺失邻接、混合曲面和类别歧义；代码注释、错误说明和报告继续使用我方第一人称。
+我方重生成正式输出：BOTTLE 为 `BASELINE`、311 Face、444 候选、141 区域；mould_04 为 `REVIEW_REQUIRED`、4974 Face、9290 候选、1393 区域。两套区域 Face 覆盖完整，JSON/CSV 均写入新字段。
+我方确认真实复核队列：BOTTLE 的 141 个区域全部带原因和优先级；mould_04 的 1393 个区域全部带原因和优先级，并因 Shape 无效全部含 `SHAPE_INVALID`/`HIGH`。
+我方执行的验证：
+1. 区域专项测试 18 passed。
+2. 全量无缓存 pytest 160 passed in 21.92s。
+3. BOTTLE 正式命令为 BASELINE；mould_04 正式命令为 REVIEW_REQUIRED，退出码 1 是质量门禁语义。
+4. 两套正式 JSON schema 为 `step-engineering-features-1.6`；区域 CSV 行数为 141 和 1393；正式 JSON 无 NaN、Infinity 或 -Infinity。
+我方保留的限制：
+复核原因代码只是区域排序和审计证据，不是自动批准。几何签名仍不是跨 CAD 永久拓扑 ID，区域类别仍不是最终行业类别；XT/PRT、真实标注准确率、性能、最终型腔/型芯、实体修补、封闭分型面、G0/G1/G2、GUI、安装包和生产验收仍需专项。
+
+===== 2026-10-03 区域索引类型门禁与最新回归补充 =====
+
+我方继续审计 STEP 工程区域回溯输入，发现旧门禁仍会把 JSON 字符串 `"3"`、
+`"12"` 转换成合法编号。为避免外部脏 JSON 静默关联，我方已将统一入口收紧为
+只接受 JSON 真正的正整数；字符串、布尔值、零值、非有限值、非整数值和越界值
+均进入复核。我方新增字符串编号回归测试。
+
+我方执行的验证：
+1. 区域、极端和工程专项测试：70 passed。
+2. 当前源码全量无缓存 pytest：162 passed。
+3. compileall 通过；pip check 返回 No broken requirements found。
+4. BOTTLE/mould_04 工程 schema 为 step-engineering-features-1.6，Face 覆盖完整；
+   outputs 保留 19 个 JSON 和 10 个 CSV。
+
+我方保留的限制：
+本轮只修复区域索引类型信任边界，不替代跨 CAD 永久拓扑 ID、XT/PRT 原生解析、
+真实准确率、性能、复杂实体修补、封闭分型面、实体布尔、G0/G1/G2、GUI、安装包
+和工业生产验收。
+
+
+===== 开发记录 2026-10-03T13:42:28+08:00 =====
+标题：我方收紧区域索引整数类型门禁并完成最新全量回归
+状态：我方已完成并通过验收
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_region_join.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_region_join.py
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方把 STEP 工程区域回溯入口的正整数门禁收紧为只接受 JSON 真正的 int，不再把字符串形式的 region_id 或 face_id 转换成合法编号；我方新增字符串编号极端回归测试，并同步更新区域复核队列和第一人称报告。
+我执行的验证：
+区域、极端和工程专项 70 passed；全量 pytest 162 passed；compileall 通过；pip check 返回 No broken requirements found。
+我保留的限制：
+本轮只修复外部区域索引的类型信任边界，不完成跨 CAD 永久拓扑 ID、XT/PRT、真实准确率、性能、最终分型面或工业验收。
+
+===== 开发记录 2026-10-03 区域边界 Edge 回溯 =====
+标题：我方为每个工程区域补充可追踪的边界 Edge 编号
+状态：我方已完成代码和定向回归，真实输出待本轮全量验证后更新
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\domain\step_features.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\domain\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_features.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\output\step_engineering_report.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_features.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我方完成的事情：
+我方复用了已有 `edge_to_faces` 索引，为每个区域生成排序稳定的 `boundary_edge_ids`。
+我方只记录至少连接一个当前区域 Face、且并非所有相邻 Face 都属于当前区域的 Edge，
+并令 `boundary_edge_count` 等于编号列表长度。工程区域 JSON evidence 和区域 CSV 同步
+保存边界 Edge 编号，工程特征 schema 升级为 `step-engineering-features-1.7`。
+我方执行的验证：
+区域和工程定向测试为 25 passed；STEP 区域回溯专项为 6 passed；compileall 通过。
+我方保留的限制：
+边界 Edge 编号只是在当前 STEP 文件内的可追踪拓扑证据，不是跨 CAD 永久拓扑 ID。
+mould_04 原始 Shape 无效性、XT/PRT、真实准确率、性能、复杂实体修补、最终封闭分型面、
+G0/G1/G2、GUI、安装包和生产验收仍需后续专项。本轮正式输出将在全量回归后重生成。
+
+===== 开发记录 2026-10-03 本轮最终回归、审计与空间收尾 =====
+标题：我方完成 1.7 正式输出同步、连续回归和重复输出清理
+状态：我方已完成当前阶段验证
+我方完成的事情：
+我方重新生成 BOTTLE 和 mould_04 正式工程输出，确认 schema 均为
+`step-engineering-features-1.7`，并确认区域边界 Edge 编号、复核字段和 CSV 新列均已写出。
+我方发现 `outputs\step_engineering` 根目录还存在 8 个旧平铺副本，在确认 8 个嵌套正式
+文件全部存在后，通过受保护的 `cleanup_regenerable_outputs.ps1` 删除旧副本，释放
+31,540,434 bytes；我方没有删除原始 CAD、provided 数据、.venv 或嵌套正式输出。
+我方执行的验证：
+1. 全量无缓存 pytest 连续两轮均通过 166 passed，耗时分别为 18.63 秒和 20.15 秒。
+2. 更早一轮全量曾出现 2 个 OCP STEP 修补瞬态失败；修补专项单独运行 4 passed，
+   后续两轮全量通过，我方将其记录为瞬态观察，不把它包装成代码修复完成。
+3. BOTTLE 为 BASELINE/311 Face/444 候选/141 区域，mould_04 为
+   REVIEW_REQUIRED/4974 Face/9290 候选/1393 区域，Face 覆盖完整。
+4. `audit outputs` 返回 PASS；compileall 通过；pip check 返回 No broken requirements found。
+5. 区域边界数量一致、编号有序、CSV 行数与 JSON 区域数一致；项目缓存最终为 0。
+6. D 盘剩余约 188.18 GiB，项目 Python 进程最终为 0。
+我方保留的限制：
+边界 Edge 编号仅是当前 STEP 文件内证据，不是跨 CAD 永久拓扑 ID。mould_04 原始 Shape
+无效性、XT/PRT、真实标注准确率、性能、复杂实体修补、最终封闭分型面、G0/G1/G2、GUI、
+安装包和工业生产验收仍需后续专项。
+
+
+===== 开发记录 2026-10-03T14:03:47+08:00 =====
+标题：我方同步1.7正式工程输出并完成166项回归与空间清理
+状态：我方已完成并通过当前阶段验收
+涉及文件：
+- src\cad_inspector\domain\step_engineering.py
+- src\cad_inspector\output\step_engineering_report.py
+- outputs\step_engineering\BOTTLE\BOTTLE.engineering.json
+- outputs\step_engineering\mould_04\mould_04.engineering.json
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+我完成的事情：
+我方发现源码已经升级到 step-engineering-features-1.7，但正式 BOTTLE/mould_04 输出仍是 1.6，因此重新生成两套正式工程 JSON、候选 CSV、拔模 CSV、区域 CSV，并确认每个区域都有 boundary_edge_ids。此次还停止了残留 run_real_pair_stress.py 进程，按白名单删除压力临时目录，释放 189004 字节；未删除原始 CAD、provided 数据、.venv 或正式核心输出。
+我执行的验证：
+全量无 pytest 缓存回归：166 passed in 18.56s；compileall 通过；pip check 返回 No broken requirements found；BOTTLE=1.7/BASELINE/311 Face/444 候选/141 区域/311 Face 覆盖；mould_04=1.7/REVIEW_REQUIRED/4974 Face/9290 候选/1393 区域/4974 Face 覆盖；当前 outputs=19 JSON、10 CSV，全部结构化可读；项目压力进程=0；项目范围缓存=0。
+我保留的限制：
+boundary_edge_ids 仍只是当前 STEP 文件内的可追踪证据，不是跨 CAD 永久拓扑 ID；mould_04 原始 Shape 无效性、XT/PRT、真实标注准确率、性能、复杂实体修补、最终封闭分型面、实体布尔、G0/G1/G2、GUI、安装包和工业生产验收仍未完成。
+
+
+===== 开发记录 2026-10-03T14:07:47+08:00 =====
+标题：我方补齐 STEP 修补质量报告字段
+状态：已完成，专项测试通过
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\domain\step_repair.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\repair\step_hole.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\output\step_repair_report.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_repair_ocp.py
+我完成的事情：
+我方在现有 STEP 修补结果对象上增加了区域级 continuity_verified、deviation_max_mm、deviation_mean_mm，以及全局 diagnostics。全局诊断记录修补尝试数、成功数、成功率、G0/G1/G2 汇总、连续性验证状态和无参考曲面时的 NOT_AVAILABLE 偏差。我方删除了 step_hole.py 中未使用的 OCP.BRep.BRep_Tool 导入，避免无效依赖痕迹。我方将 STEP 修补报告 schema 从 1.0 更新到 1.1，并同步扩展 CSV 字段。
+我执行的验证：
+STEP 专项：4 passed；compileall：通过。
+我保留的限制：
+当前没有参考曲面，因此偏差和 G1/G2 连续性仍明确为 NOT_AVAILABLE/NOT_VERIFIED，不宣称工业验收。
+
+===== 开发记录 2026-10-03 附件要求与用户执行要求分离 =====
+我方只读核对了 `D:\桌面\514.docx` 和桌面压缩包。`514.docx` 属于原始任务书和验收
+规范，要求包括：枕型模具部件自动分型线和分型面、STP/XT 输入、IGS/STP/IGS 输出、
+分型线与分型面正确率各不低于 80%、单文件全流程不超过 5 分钟、Windows 10/11、
+本地离线处理、原始模具不修改、20 组训练集、20 组测试集、合规工业解析库和关键算法
+说明等。这些是项目原始验收目标，不等于当前已完成事实。
+我方本轮用户执行要求是：以甲方第一人称写长计划和报告，只先输出 TXT；把项目放到
+D 盘执行；每轮记录做了什么和细节；持续改进、排查、修复和极端测试；列出工具和后续
+AI 关键词；并删除确认无用的可再生文件节省 D 盘空间。这些是本轮工作方式和交付格式。
+我方发现用户引用的 `D:\桌面\144.rar.wxdownload` 当前不存在，但同目录存在完整的
+`D:\桌面\144.rar`。我方未解压该 55,552,868 字节压缩包，只做只读清单，发现 22 个
+目录项，其中 20 个 STEP、1 个 PRT 和 1 个目录项；不因附件清点复制大文件。
+我方明确区分：附件任务书定义目标和验收门槛，用户请求定义本轮执行与记录方式；二者
+共同约束当前项目，但不能把尚未验证的准确率、性能、XT/PRT 或工业验收写成已完成。
+
+
+===== 开发记录 2026-10-03T14:18:10+08:00 =====
+标题：我方完成 STEP 修补字段、极端测试、真实烟囱和空间清理
+状态：已完成当前阶段闭环
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\README.md
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\完整改进与极端测试验收报告_甲方第一人称版_2026-10-02.txt
+- D:\STP_STL_Missing_Region_Recognition\scripts\cleanup_regenerable_outputs.ps1
+我完成的事情：
+我方把当前终态追加到 README、完成情况报告书、最新完整开发汇报和极端测试验收报告，统一说明 step-repair-1.1、区域/全局质量字段、NOT_AVAILABLE 偏差和 NOT_VERIFIED 连续性。 我方完成全量无缓存回归、依赖检查、compileall、极端专项、真实 BOTTLE/mould_04 STEP 修补烟囱和 JSON/CSV 审计。 BOTTLE 71 个开放环、12 个平面候选，补面后仍有 123 条开放边、48 条非流形边和 0 个 Solid，保留 REVIEW_REQUIRED；mould_04 输入 Shape 无效，120 个开放环、0 个候选，保留 REVIEW_REQUIRED。 我方把两个烟囱目录加入可再生输出白名单，释放 203617 bytes；项目缓存目录清理为 0。
+我执行的验证：
+全量 pytest：166 passed in 27.54s；STEP 修补专项：4 passed；极端/审计/原子输出专项：58 passed；compileall 通过；pip check 无断依赖；两套烟囱 JSON/CSV 审计 PASS；清理脚本释放 203617 bytes。
+我保留的限制：
+当前仍不宣称真实准确率、92% 修补成功率、8 秒性能、曲面插值、NURBS、G1/G2、XT/PRT 或工业最终验收。
+
+
+===== 开发记录 2026-10-03T14:24:37+08:00 =====
+标题：我方补充后续 AI 的 STEP 修补交接关键词
+状态：已完成
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+我完成的事情：
+我方将 step-repair-1.1、修补尝试/成功率、continuity_verified、G0/G1/G2、NOT_AVAILABLE 偏差、开放边/非流形边/Solid 门禁和 BOTTLE/mould_04 真实烟囱数字补入后续 AI 交接清单，并明确 CANDIDATE、REVIEW_REQUIRED、BASELINE、UNRESOLVED、NOT_VERIFIED 不能自动改写成修复成功。
+我执行的验证：
+TXT 内容写入完成；当前项目仍保持 D 盘路径和第一人称交接规则。
+我保留的限制：
+交接清单不代表 XT/PRT、G1/G2 或工业最终验收已经完成。
+
+
+===== 开发记录 2026-10-03T14:27:06+08:00 =====
+标题：我方完成最终后台进程与空间终态核验
+状态：已完成，项目可交接
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\开发记录.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\开发过程记录_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方发现并停止了残留的 Stage 3/工程特征后台批处理，防止它继续重生成输出和占用 D 盘空间。等待复核后，项目 Python 进程为 0、项目缓存目录为 0、临时 .tmp 文件为 0。正式 outputs 当前有 20 个 JSON 和 13 个 CSV，D 盘剩余约 188.17 GiB。
+我执行的验证：
+最终静态核验：ProjectPythonProcesses=0；CacheDirectories=0；TempFiles=0；此前 audit outputs 返回 PASS，29 个正式文件全部有效。
+我保留的限制：
+我方没有删除原始 CAD、provided 数据、.venv、源码、测试、正式 outputs 或报告。
+
+
+===== 开发记录 2026-10-03T14:29:54+08:00 =====
+标题：我方以当前文件重新完成正式 outputs 最终审计
+状态：已完成，最终数字已校正
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\outputs
+- D:\STP_STL_Missing_Region_Recognition\reports\开发过程记录_甲方第一人称版_2026-10-03.txt
+我完成的事情：
+我方在停止残留后台工程特征批处理后，重新对当前 outputs 执行最终结构化审计，避免后台重生成文件导致旧审计数量滞后。当前正式 outputs 共 33 个文件，其中 20 个 JSON、13 个 CSV，全部有效，0 个损坏、0 个跳过，空输出为 False。
+我执行的验证：
+最终 audit outputs：PASS，total_files=33，valid_files=33，invalid_files=0，skipped_files=0；ProjectPythonProcesses=0。
+我保留的限制：
+本次审计只证明结构化文件可读和完整性，不证明真实准确率、修补成功率或工业验收。
+
+
+===== 开发记录 2026-10-03T14:50:09+08:00 =====
+标题：我方实现区域几何签名并同步1.4与1.8正式输出
+状态：我方已完成并通过当前区域阶段验收
+涉及文件：
+- src\cad_inspector\domain\step_features.py
+- src\cad_inspector\domain\step_engineering.py
+- src\cad_inspector\detection\step_features.py
+- src\cad_inspector\detection\step_engineering.py
+- src\cad_inspector\output\step_engineering_report.py
+- tests\test_step_features.py
+- tests\test_step_engineering.py
+- outputs\stage3_regions_v3\BOTTLE_step_regions_v3.json
+- outputs\stage3_regions_v3\mould_04_step_regions_v3.json
+- outputs\step_engineering\BOTTLE\BOTTLE.engineering.json
+- outputs\step_engineering\mould_04\mould_04.engineering.json
+- README.md
+我完成的事情：
+我方继续按区域部分实现代码，在 StepFeatureRegion 和 StepEngineeringRegion 中增加 region_geometry_signature。签名只使用区域角色、Face 几何签名或几何摘要、面积、中心、平均法向和曲面类型统计，不使用 Face ID、Edge ID 或 region_id；我方同步写入阶段3 JSON、工程 JSON、区域 CSV 和诊断统计。阶段3正式输出重生为 step-feature-classification-1.4，工程正式输出重生为 step-engineering-features-1.8。生成过程中我方发现 CLI 直接使用 output-dir 会在 step_engineering 顶层产生重复副本，于是保留正式 BOTTLE/mould_04 子目录并删除4个明确重复文件，释放2155983字节。
+我执行的验证：
+区域专项31 passed；全量pytest166 passed；compileall通过；pip check返回 No broken requirements found；BOTTLE=BASELINE/311 Face/141区域/311 Face覆盖；mould_04=REVIEW_REQUIRED/4974 Face/1393区域/4974 Face覆盖；阶段3与工程区域签名全部存在；JSON=19、CSV=10全部结构化可读；项目缓存0；项目压力进程0。
+我保留的限制：
+region_geometry_signature只是同文件或相似几何的候选追踪证据，不是跨CAD永久拓扑ID；重复几何、单位变化、模型重建、拓扑重排和形变仍可能导致碰撞或失配。XT/PRT、真实标注准确率、性能、复杂实体修补、最终分型面和工业验收仍未完成。
+
+===== 2026-10-03 当前增量收尾：区域分型证据、回归排查与空间清理 =====
+
+我方继续按区域实施代码，并把区域分型证据写入正式工程结果。我在
+`StepEngineeringRegion` 中增加 `parting_role_candidates`、`parting_confidence`、
+`parting_review_required` 和 `parting_evidence`，新增 `PARTING_REGION_AMBIGUOUS`
+复核原因，工程 schema 更新为 `step-engineering-features-1.9`，区域 CSV 增加四个
+分型字段。
+
+我方以当前源码重新生成 BOTTLE 和 mould_04 正式工程输出。BOTTLE 为
+`BASELINE`、311 Face、444 候选、141 区域，Face 覆盖 311/311，分型区域需要复核
+94 个；mould_04 为 `REVIEW_REQUIRED`、4974 Face、9290 候选、1393 区域，Face
+覆盖 4974/4974，分型区域需要复核 892 个，Shape 无效性继续保留。两套区域 CSV
+均为 30 列，行数分别为 141 和 1393。
+
+我方首次全量测试进程出现 2 个 STEP 修补失败，随后重新核对工作区，确认当前源码和
+测试已同步到 `step-repair-1.2`，平面补面连续性为 `G0_VERIFIED`。STEP 修补专项
+复核为 `4 passed`，修复后全量无缓存回归为 `170 passed in 51.79s`。我没有把旧
+文件快照造成的瞬态失败写成稳定产品缺陷。
+
+我方继续执行 `compileall`、`pip check` 和 outputs 审计：编译通过，依赖返回
+`No broken requirements found`，审计 `PASS`，29/29 文件有效、0 损坏、0 跳过。
+我把再生成日志加入受保护的可再生清理白名单，释放 236651 字节；原始 CAD、
+provided 数据、`.venv`、源码、测试、正式输出和正式 TXT 报告均保留。
+
+我方当前仍保留边界：`boundary_edge_ids` 和 `region_geometry_signature` 不是跨 CAD
+永久 ID；分型角色只是候选证据；无参考曲面时偏差、G1/G2 和工业连续性不验收；XT/PRT、
+真实准确率、性能、复杂实体修补、最终封闭分型面、GUI、安装包和生产验收尚未完成。
+
+
+===== 开发记录 2026-10-03T15:09:21+08:00 =====
+标题：我方完成 schema 1.9 当前真值校正与正式审计
+状态：已完成，当前基线已记录
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\README.md
+- D:\STP_STL_Missing_Region_Recognition\reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\甲方第一人称版_长计划与实施方案.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+- D:\STP_STL_Missing_Region_Recognition\reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+我完成的事情：
+我方以当前源码和正式输出为准，将工程 schema 1.9、区域分型候选字段、分型证据方法和复核边界补入 README、完成报告、长计划、后续 AI 交接清单和最新汇报。我方先发现审计脚本错误假设顶层 faces 字段，随后按真实 face_count、adjacency、draft_evidence 和 regions 结构修正审计；四个核心正式 JSON 的 Face 覆盖最终确认 BOTTLE 311/311、mould_04 4974/4974。工程区域全部具备 region_geometry_signature、parting_role_candidates、parting_confidence、parting_review_required 和 parting_evidence；BOTTLE 分型复核 94 个区域，mould_04 分型复核 892 个区域。我方没有把候选证据写成工业最终结论。
+我执行的验证：
+当前全量无缓存 pytest：170 passed in 48.02s；compileall 通过；pip check 返回 No broken requirements found；四个核心正式 JSON 和 10 个正式 CSV 通过结构化读取、数值有限性和 Face 覆盖审计。
+我保留的限制：
+区域几何签名、Face/Edge 编号和分型角色候选都不是跨 CAD 永久拓扑 ID或最终分型面；真实标注准确率、XT/PRT、复杂实体修补、封闭分型面、性能、GUI、安装包和工业验收仍未完成。
+
+
+===== 开发记录 2026-10-03T15:12:25+08:00 =====
+标题：我方完成最终白名单清理与 D 盘空间收口
+状态：已完成，未误删受保护文件
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\scripts\cleanup_regenerable_outputs.ps1
+- D:\STP_STL_Missing_Region_Recognition\scripts\cleanup_project_caches.ps1
+- D:\STP_STL_Missing_Region_Recognition\outputs
+我完成的事情：
+我方执行可再生输出和项目缓存白名单清理。清理脚本没有发现新的重复目标，项目缓存目录为 0，临时文件为 0，输出目录保留 29 个正式文件，约 47.72 MB。原始 CAD、data\provided、.venv、源码、测试、正式 JSON/CSV 和 TXT 报告均保留。
+我执行的验证：
+只读核验确认 D 盘剩余约 188.16 GiB；四个核心 JSON schema 和 Face 覆盖正确；19 个 JSON、10 个 CSV 可读且无 NaN/Infinity；受保护目录均存在。
+我保留的限制：
+本轮只清理可再生和白名单目标，没有清理原始数据或正式交付物；项目级后台进程将在记录命令结束后单独核验。
+
+
+===== 开发记录 2026-10-03T15:35:03+08:00 =====
+标题：我方完成 STEP G2 曲率审计、真实烟囱和附件真值校正
+状态：已完成当前连续性阶段并进入收尾清理
+涉及文件：
+- src\cad_inspector\domain\repair.py
+- src\cad_inspector\domain\step_repair.py
+- src\cad_inspector\repair\step_hole.py
+- src\cad_inspector\output\step_repair_report.py
+- src\cad_inspector\cli.py
+- tests\test_step_repair_ocp.py
+- tests\test_extreme_inputs.py
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- reports\甲方第一人称版_长计划与实施方案.txt
+- reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+我完成的事情：
+我方新增 max_g2_curvature_delta_per_mm 配置、g2_max_curvature_delta_per_mm 区域字段和 step-repair-1.3 schema，使用 OCP 曲面 D2 导数、边界 Edge 3D 切向和法向曲率量差执行保守 G2 采样。G2 只有在 G0、G1 和采样完整且阈值通过时才标记为 G2_VERIFIED；G1 失败时不把 G2 当作验收证据。我方新增真实共面 OCP G2 测试，并将 CLI 参数和 CSV 表头同步。我方只读核对 D:\桌面\88.docx，确认它是 STL 到 STP 破损区域智能修补任务书，指标为 96% 检测准确率、92% 修补成功率、8 秒单模型、48 小时稳定性和 25 组训练集/25 组测试集；D:\桌面\888.rar 存在，但当前环境没有合规 RAR 列表或解压后端，我方未复制或解压。
+我执行的验证：
+定向专项 16 passed；全量无缓存 pytest 171 passed in 47.14s；共面 OCP G0/G1/G2 均通过且曲率量差 0.0；BOTTLE 烟囱 step-repair-1.3 为 71 环/12 候选，12/12 通过 G0/G1/G2，补面后 123 开放边、48 非流形边、0 Solid，REVIEW_REQUIRED；mould_04 为无效 Shape、120 环、0 候选、REVIEW_REQUIRED；两套烟囱 JSON/CSV 各 2/2 审计有效；pip check 无断依赖。
+我保留的限制：
+G2 为采样法向曲率量差证据，不等于完整 NURBS 重建或工业 G2 证明；真实准确率、92% 修补成功率、8 秒性能、48 小时稳定性、XT/PRT、复杂实体闭合、GUI、安装包和生产验收仍未完成。
+
+
+===== 开发记录 2026-10-03T15:42:26+08:00 =====
+标题：我方完成附件边界校正和最终空间清理
+状态：已完成本轮最终收尾
+涉及文件：
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- reports\甲方第一人称版_长计划与实施方案.txt
+- reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+- D:\桌面\88.docx
+- D:\桌面\888.rar
+- outputs\outputs_audit.json
+我完成的事情：
+我方校正了附件事实：88.docx 是本轮真实 STL 到 STP 破损区域智能修补任务书；888.rar 在项目历史中已经生成过 data\provided 样例，本轮没有重新复制或解压。由于当前环境没有 RAR 列表或解压后端，我方没有为了查看压缩包安装新工具。我方把 G2 曲率审计、171 passed、BOTTLE/mould_04 烟囱结果和本轮空间收尾同步到 README、甲方完成报告、最新汇报、长计划和后续 AI 交接清单。
+我执行的验证：
+正式 outputs 审计 PASS：29/29 有效、0 损坏、0 跳过、空输出为 False；D 盘剩余约 188.00 GiB；烟囱清理释放 243743 bytes；项目缓存清理返回 0；项目 Python 进程 0；项目临时文件 0；正式 BOTTLE/mould_04 工程文件仍存在。
+我保留的限制：
+888.rar 内部清单本轮未能独立复核；data\provided 现有样例与历史记录保留。88.docx 的 96%/92%/8秒/48小时/25+25 是验收目标，不是当前已证明结果。
+
+
+===== 开发记录 2026-10-03T16:02:31+08:00 =====
+标题：我方新增非平面曲面填充候选并完成当前轮验证
+状态：已完成当前曲面候选阶段
+涉及文件：
+- src\cad_inspector\domain\repair.py
+- src\cad_inspector\repair\step_hole.py
+- src\cad_inspector\cli.py
+- tests\test_step_repair_ocp.py
+- tests\test_extreme_inputs.py
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- reports\甲方第一人称版_长计划与实施方案.txt
+- reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+我完成的事情：
+我方新增 allow_nonplanar_surface_candidate 配置和 --allow-nonplanar-surface-candidate CLI 开关，默认关闭。显式开启后，对闭合且不满足平面门禁的 Wire 调用 OCP BRepOffsetAPI_MakeFilling，生成 ocp_surface_filling_candidate；候选区域强制保留 review_required，只要有人工复核标记就不能自动写正式修复 STEP。我方新增非平面四边 Wire 的真实 Filling 候选测试，并把本轮实现、工具关键词、88.docx 验收目标和 888.rar 既有 data\provided 边界同步到甲方报告。
+我执行的验证：
+定向专项 18 passed；全量无缓存 pytest 179 passed in 38.21s；compileall 通过；pip check 返回 No broken requirements found；BOTTLE 当前源码烟囱 step-repair-1.3 为 71 环/12 候选、12/12 G0/G1/G2、123 开放边、48 非流形边、0 Solid、REVIEW_REQUIRED；mould_04 为无效 Shape、120 环、0 候选、REVIEW_REQUIRED；两套烟囱 JSON/CSV 各 2/2 有效。
+我保留的限制：
+Filling 目前是 C0 曲面候选，不等于 NURBS 重建、完整 Wire 重构、工业 G2 或正式实体修补；默认关闭，不改变正式输出。
+
+
+===== 开发记录 2026-10-06T15:31:23+08:00 =====
+标题：我方修复 BOM Excel 误删风险并完成 2026-10-06 收尾审计
+状态：已完成本轮修复与验证
+涉及文件：
+- scripts\cleanup_regenerable_outputs.ps1
+- tests\test_cleanup_policy.py
+- README.md
+- reports\开发完成情况报告书_甲方第一人称版_2026-10-03.txt
+- reports\最新完整开发汇报_甲方第一人称版_2026-10-02.txt
+- reports\甲方第一人称版_长计划与实施方案.txt
+- reports\甲方第一人称版_后续AI技能与工具清单_2026-10-03.txt
+- outputs\bom_bottle\BOTTLE.bom.json
+- outputs\bom_bottle\BOTTLE.bom.csv
+- outputs\bom_bottle\BOTTLE.bom.xlsx
+- reports\outputs_audit.json
+我完成的事情：
+我方发现清理脚本可能删除甲方要求的 BOM XLSX，已将 BOM JSON、CSV、XLSX 纳入正式保护清单，并新增清理策略回归测试。我方重新生成 BOTTLE BOM 三件套，确认 2 个唯一参考 Shape、2 个 occurrence 和 mold-bom-1.5；我方把当前点名附件与历史附件边界同步到 README、甲方报告、长计划和后续 AI 清单。
+我执行的验证：
+清理策略专项 9 passed；全量 pytest 185 passed in 41.84s；compileall 通过；pip check 返回 No broken requirements found；BOM XLSX 标准库 zipfile 校验通过；清理后 artifact audit 为 30/30 有效、0 损坏、0 跳过、PASS；D 盘剩余约 178.94 GiB。
+我保留的限制：
+XT 仍需授权 Parasolid 或商业适配器；99%/1%/3 分钟、甲方标注集、版本矩阵和工业验收仍未证明；点名 RAR 只确认存在，内部清单未核验。
+
+
+===== 开发记录 2026-10-06T15:31:46+08:00 =====
+标题：我方完成最后一次项目缓存收口
+状态：已完成
+涉及文件：
+- scripts\cleanup_project_caches.ps1
+我完成的事情：
+我方在所有代码、测试、正式输出和报告写入结束后，执行受保护的项目缓存清理；我方只删除白名单缓存目录，不删除原始 CAD、data、虚拟环境、源码、测试、正式输出或 TXT 报告。
+我执行的验证：
+cleanup_project_caches.ps1 返回 Project cache directories: 0；随后只读核验项目缓存、临时文件和项目 Python 进程。
+我保留的限制：
+任何后续 Python 运行都可能重新生成缓存；后续 AI 重新运行后必须再次执行同一清理脚本。
+
+
+===== 开发记录 2026-10-06T15:55:34+08:00 =====
+标题：我方完成训练门禁、输出审计和 schema 2.2/1.7 收口
+状态：已完成当前轮，保留工业验收限制
+涉及文件：
+- src\cad_inspector\learning\annotations.py
+- src\cad_inspector\io\artifact_audit.py
+- src\cad_inspector\cli.py
+- tests\test_annotation_manifest.py
+- tests\test_artifact_audit.py
+- tests\test_cli_commands.py
+- tests\test_formal_output_contract.py
+- scripts\cleanup_regenerable_outputs.ps1
+- README.md
+- reports\outputs_audit.json
+我完成的事情：
+我方修复单个 CAD 文件跨 split 复用造成的数据泄漏，允许历史 train/test 两分割清单，增加包围盒成对和坐标顺序校验，并新增 validate-annotations CLI。 我方增强 artifact_audit，拒绝重复 JSON 键、列数不齐 CSV 和只有未知格式文件的假 PASS。 我方用当前源码重新生成 BOTTLE 和 mould_04 正式阶段 3、工程 JSON/CSV，统一为 step-feature-classification-1.7、step-engineering-features-2.2，工程区域 CSV 为 41 列。 我方补充正式输出契约测试、README、甲方完成报告、长计划和后续 AI 工具清单。
+我执行的验证：
+定向标注/CLI/清理专项 12 passed；审计与相关定向专项 19 passed；全量无缓存 pytest 196 passed in 50.67s；compileall 通过；pip check 返回 No broken requirements found；outputs 审计 30/30 有效、0 损坏、0 跳过、PASS。
+我保留的限制：
+我方仍不能宣称真实标注准确率 99%、漏检率 1%、3 分钟性能、XT/PRT 原生解析、最终封闭实体、工业 G0/G1/G2、GUI、安装包或生产验收已经完成。
+
+
+===== 开发记录 2026-10-06T16:01:04+08:00 =====
+标题：我方完成最终全量、极端测试与空间收口
+状态：已完成本轮可验证改进
+涉及文件：
+- tests\test_formal_output_contract.py
+- reports\outputs_audit.json
+- scripts\cleanup_project_caches.ps1
+我完成的事情：
+我方完成正式输出契约测试、极端输入与 OCP 资源保护回归，并在最后一次 compileall 后清理项目缓存。当前 BOTTLE/mould_04 正式阶段 3 schema 为 step-feature-classification-1.7，工程 schema 为 step-engineering-features-2.2，工程区域 CSV 为 41 列。
+我执行的验证：
+极端与交付专项 81 passed in 52.71s；最终全量无缓存 pytest 197 passed in 45.41s；compileall 通过；pip check 返回 No broken requirements found；outputs audit 30/30 有效、0 损坏、0 跳过、PASS；cache_dirs=0；project_python_processes=0；project_temp_files=0；D 盘剩余约 178.93 GiB。
+我保留的限制：
+我方仍不能把当前基线写成真实 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、最终封闭实体、工业 G0/G1/G2、GUI、安装包或生产验收；这些仍需甲方数据、授权适配器、固定硬件和正式验收脚本。
+
+===== 2026-10-06 主边界 Wire 投影面积交叉校验与清理终检索引 =====
+
+我方本轮已完成真实 Vertex 坐标、有序闭合回路、二维投影面积、平面性和冲突复核，
+并重生成正式输出。阶段 3/工程 schema 为 `step-feature-classification-1.8` 和
+`step-engineering-features-2.3`，工程区域 CSV 为 44 列，全量测试 `209 passed`，
+outputs audit `30/30 PASS`，清理可再生成日志释放 `65,481,405` 字节。
+
+详细记录见 `reports\甲方第一人称版_主边界Wire投影面积校验与清理终检_2026-10-06.txt`。
+
+===== 2026-10-06 边界环层级与 CSV 上限收口索引 =====
+
+我方本轮完成闭合环层级、孔洞候选、相交环冲突、47 列区域 CSV 和 CSV 单元格上限修复。
+阶段 3/工程 schema 为 `step-feature-classification-1.9` 和
+`step-engineering-features-2.4`，全量测试 `225 passed`，outputs audit `30/30 PASS`。
+
+详细记录见 `reports\甲方第一人称版_边界环层级与CSV上限收口_2026-10-06.txt`。
+
+===== 2026-10-06 D 盘空间收口与无用文件排查索引 =====
+
+我方本轮按甲方要求做 D 盘空间收口：复核白名单清理脚本，确认可再生成输出命中 0 项、
+项目缓存目录 0，并用统一门禁清理 40 个字节码缓存。项目本体合计约 2,174.73 MiB，
+其中 data 1,351.56 MiB、.venv 688.85 MiB、outputs 132.63 MiB，均为受保护内容。
+桌面 rar 压缩包因本机缺少解压工具未核对，仅登记不删。D 盘可用约 178.44 GiB。
+
+详细记录见 `reports\甲方第一人称版_D盘空间收口与无用文件排查_2026-10-06.txt`。

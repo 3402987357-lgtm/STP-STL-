@@ -1,0 +1,51 @@
+我方分型 CAD 原子写出收口记录
+日期：2026-10-06
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方在复核正式输出写出路径时发现一处与项目自身约定不一致的真实缺陷。项目里
+output\atomic.py 的文档写得很清楚："我用同目录临时文件替换正式输出，避免中断留下
+半个文件"，write_json、write_csv、save_stl、write_batch_reports 都遵守这个约定。
+但 output\cad_parting.py 的 write_step_parting_cad_outputs 直接把
+IGESControl_Writer / STEPControl_Writer 写到最终路径。
+
+后果是：只要进程在写出中途被打断（Ctrl+C、断电、磁盘写满），正式目录里就会留下一个
+内容不完整的 .igs / .step。更麻烦的是 io\artifact_audit.py 的 _AUDITED_SUFFIXES
+只覆盖 .json/.csv/.xlsx/.ply/.stl，不含 .step/.igs，所以这种"半个文件"不会被输出
+审计发现，甲方拿到手才可能在 CAD 里打不开。
+
+二、我方怎么改
+
+我新增 _atomic_write_cad(path, write)：先让 OCP 写同目录的 .tmp 临时文件，写成功再
+用 os.replace 覆盖正式文件；写失败就抛 GeometryProcessingError，由 atomic_path 的
+finally 删除临时文件，正式文件保持原样。分型线 IGS、分型面 STEP/IGS、过渡曲面
+STEP/IGS、缝合过渡曲面 STEP/IGS 全部走这条路径。
+
+我先单独验证过 OCP 行为：IGESControl_Writer.Write 和 STEPControl_Writer.Write 都能
+写入已经存在的空文件，也能写入 .tmp 后缀，所以"先建临时文件、再让 OCP 覆盖写"这个
+方案对 OCP 是安全的，不需要改动 OCP 调用方式。
+
+三、我执行的验证
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_step_parting_ocp.py tests\test_output_atomic.py tests\test_parting_cli.py
+为 8 passed。
+
+我新增两条检查：
+
+1. test我方cad写出失败时不留下半个正式文件：写回调返回 False 时，旧文件内容仍是
+   OLD，目录里没有 .tmp 残留。
+2. test我方cad写出成功后原子替换旧文件：成功后正式文件内容是新内容，目录里同样
+   没有 .tmp 残留。
+
+我还在真实 OCP 分型写出测试里追加了"out 目录无 .tmp 残留"的断言，覆盖一次完整
+的 IGES/STEP 写出。
+
+四、我保留的限制
+
+1. 我只把"写文件"这一步改成原子替换；OCP 的 Transfer 和 AddShape 仍在内存中完成，
+   不涉及磁盘。
+2. 如果 OCP 在 Write 内部自己留下临时文件，我不负责清理。
+3. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、
+   工业 G0/G1/G2、GUI、安装包或生产验收。

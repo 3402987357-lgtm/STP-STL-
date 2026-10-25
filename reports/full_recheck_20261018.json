@@ -1,0 +1,237 @@
+{
+  "pair_count": 21,
+  "elapsed_seconds": 1666.8,
+  "records": [
+    {
+      "case": "训练集__0",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.6659625189577123,
+      "old_region_count": 23,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 1.2959939068534396e-06,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 36.0
+    },
+    {
+      "case": "训练集__1",
+      "old_mode": null,
+      "old_missing_ratio": null,
+      "old_region_count": 0,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.00025165274249831516,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 292.4
+    },
+    {
+      "case": "训练集__2",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.9111318026998048,
+      "old_region_count": 10,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.00047534449957979116,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 28.5
+    },
+    {
+      "case": "训练集__3",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.5412923200164735,
+      "old_region_count": 28,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 1.2959939068534396e-06,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 92.4
+    },
+    {
+      "case": "训练集__4",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.7685642901473015,
+      "old_region_count": 2,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 5.490741350133138e-08,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 40.2
+    },
+    {
+      "case": "训练集__5",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.7721651047219695,
+      "old_region_count": 16,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0003743597091377594,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 121.3
+    },
+    {
+      "case": "训练集__6",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.9495315122857644,
+      "old_region_count": 4,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 2.4923136054970486e-06,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 64.0
+    },
+    {
+      "case": "训练集__7",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.8668054801116934,
+      "old_region_count": 6,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.02743602842136368,
+      "new_region_count": 1,
+      "new_status": "review",
+      "elapsed_seconds": 40.2
+    },
+    {
+      "case": "训练集__8",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.8518418836823561,
+      "old_region_count": 4,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.07666709019551111,
+      "new_region_count": 1,
+      "new_status": "review",
+      "elapsed_seconds": 13.0
+    },
+    {
+      "case": "测试集__1",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.6473613726317967,
+      "old_region_count": 9,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0008788797013603942,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 87.8
+    },
+    {
+      "case": "测试集__10",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.5152616704015761,
+      "old_region_count": 6,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 105.6
+    },
+    {
+      "case": "测试集__11",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.9571593139048616,
+      "old_region_count": 4,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.00015074258951550048,
+      "new_region_count": 1,
+      "new_status": "review",
+      "elapsed_seconds": 57.3
+    },
+    {
+      "case": "测试集__12",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.8780139087872966,
+      "old_region_count": 6,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 7.659948632600086e-05,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 66.1
+    },
+    {
+      "case": "测试集__2",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.800241113928864,
+      "old_region_count": 3,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 75.6
+    },
+    {
+      "case": "测试集__3",
+      "old_mode": null,
+      "old_missing_ratio": null,
+      "old_region_count": 0,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 194.7
+    },
+    {
+      "case": "测试集__4",
+      "old_mode": null,
+      "old_missing_ratio": null,
+      "old_region_count": 0,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.00019647402037554213,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 217.8
+    },
+    {
+      "case": "测试集__5",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.2155978746073658,
+      "old_region_count": 12,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0005111420918938478,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 20.9
+    },
+    {
+      "case": "测试集__6",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.23769838057322015,
+      "old_region_count": 6,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 7.7
+    },
+    {
+      "case": "测试集__7",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.477973547283634,
+      "old_region_count": 8,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.00045307988585720893,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 26.7
+    },
+    {
+      "case": "测试集__8",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.7165394837701771,
+      "old_region_count": 8,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 66.6
+    },
+    {
+      "case": "测试集__9",
+      "old_mode": "centroid",
+      "old_missing_ratio": 0.0012738200025113671,
+      "old_region_count": 0,
+      "new_mode": "auto->none",
+      "new_missing_ratio": 0.0,
+      "new_region_count": 0,
+      "new_status": "review",
+      "elapsed_seconds": 10.0
+    }
+  ]
+}

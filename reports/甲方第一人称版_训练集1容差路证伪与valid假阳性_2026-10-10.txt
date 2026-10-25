@@ -1,0 +1,101 @@
+我方试了第四条路（调容差）并证伪它：valid=True 是假阳性
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么又试了一次
+
+前面三次尝试（FixSmallAreaWire + FixGap3d 逐 Wire、ShapeFix_Shape 全套、
+UnifySameDomain 的 linear 与 surf 两种模式）**全是修形算子**，三次都
+一个字节都没变。我注意到一条从没试过的方向：那三次都是"改形状"，
+**没有一次动过容差**。而 训练集/1 的性质是"拓扑上已是 Solid、只是
+BRepCheck 判无效"，52 条自由边散布在 730 个面上。如果无效性来自容差
+尺度，放宽容差可能才是正解。
+
+二、第一次跑看起来成功了
+
+    ShapeFix_Shape + SetPrecision/SetMinTolerance/SetMaxTolerance
+
+    原样                          valid=False
+    prec=0.01 min=0.01 max=0.1    valid=False
+    prec=0.05 min=0.05 max=0.5    valid=True     <- 看起来成了
+    prec=0.1  min=0.1  max=1.0    valid=True
+    prec=0.5  min=0.5  max=5.0    valid=True
+
+而且 0.05 正好是项目既有的几何容差（`max_planarity_error_mm` 默认
+0.05），看起来和既有口径一致，不是我凭空放宽。
+
+**我差点就把它算成第 10 个修好的件、把闭合率报到 90.9%。**
+
+三、我去验了自由边，结果把它证伪了
+
+`valid=True` **不等于**真的封闭。我用项目自己的 `_free_edge_count`
+（STEP 版）数了自由边：
+
+    原样             free=52   solids=1  shells=1  faces=730  valid=False
+    prec=0.01        free=55                                 valid=False
+    prec=0.05        free=48                                 valid=True
+    prec=0.1         free=47                                 valid=True
+    prec=0.5         free=44                                 valid=True
+
+**自由边只从 52 降到 44~48，根本没消掉。**即使把容差放到 0.5mm（项目
+几何容差的 10 倍），**还剩 44 条自由边**。
+
+也就是说：**`valid=True` 是放宽容差让 BRepCheck 闭嘴，不是把缝缝上了。**
+缝还在，只是判据变松了。这是把问题藏起来，不是解决问题。
+
+四、我的结论
+
+**这条路不能算修好，我不给它计成功。** 闭合率仍是 **9/11 = 81.8%**，
+92% 仍未达成，卡点仍是 `训练集/1`。
+
+如果我只跑第一步就收工，会得到一个"看起来修好了"的假结论，而甲方拿
+到的模型仍有 48 条自由边——这正是我最该避免的那类错误：**用放松判据
+的办法制造一个好看的数字**。
+
+五、顺带的两个收获
+
+1. **这第四次尝试不是完全无效**：自由边确实从 52 降到 44（prec=0.5），
+   说明 ShapeFix 消掉了一部分，只是剩太多、不足以判封闭。
+2. **它进一步印证了 训练集/1 的性质**：四次尝试（三种修形 + 调容差）
+   都消不掉它的无效性，而它 `solids=1 shells=1` 全程不变——它确实是
+   "已封闭但 BRepCheck 判无效"，和那 9 个"原本 solids=0、我补面后升成
+   实体"的件**不是同一类问题**。
+
+六、我踩的一个坑（记录以免再犯）
+
+我第一版验证脚本调 `free_edge_count` 报 TypeError。查了才发现：
+`cad_inspector.detection` 里的 `free_edge_count` 是**网格版**（吃
+TriangleMesh），STEP 形状上要用 `repair/step_hole.py` 的
+`_free_edge_count`，且签名是 `(shape, explorer_type, topods_type)`
+三参数——我传了四个。
+
+七、我执行的验证
+
+- 容差组合四档：0.01 / 0.05 / 0.1 / 0.5，每档都记 valid 与 free。
+- 用项目自己的 `_free_edge_count` 复核自由边（不是只看 BRepCheck）。
+- 全程 `solids=1 shells=1 faces=730` 不变。
+- 本轮**未改生产代码**，探测脚本跑完即删。
+
+八、当前权威状态
+
+11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**（未变）。
+`训练集/1` **四条路全部失败**（三种修形 + 调容差），`训练集/4` 我主动
+不动它。**任务书 92% 仍未达成。**
+
+九、我保留的限制
+
+1. 任务书 92% 未达成（81.8%），卡点唯一是 `训练集/1`。
+2. 我**没有量这 48 条残余自由边的缝总长**——只数了条数。如果它们每条
+   极短（例如 0.003mm），总长可能仍在项目容差内。这是下一步该验的：
+   条数多不等于缝大。
+3. 我没试 `BRepLib::EncodeRegularity`、也没试先 UnifySameDomain 再
+   ShapeFix 的**组合**（我只单独试过它们）。
+4. 前面报告里"每条约 0.003mm"与我算的（0.835/52 ≈ 0.016mm）**对不上**，
+   我没有追查这个出入。
+5. 顶层 SUCCESS 与区域级 MANUAL_REVIEW_REQUIRED 并存，我**没改**它。
+6. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+7. 合成基准 `测试集/8#face3` 我没修好；合成 `case_count` 14→17 未查明。
+8. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+9. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+本轮**无代码改动**，只做探测与证伪。

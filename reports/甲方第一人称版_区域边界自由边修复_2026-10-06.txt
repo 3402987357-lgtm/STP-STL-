@@ -1,0 +1,157 @@
+甲方第一人称版：区域边界自由边修复（2026-10-06）
+================================================================
+
+我以甲方第一人称记录本轮区域实现工作。本轮我按“不同区域逐个实现”的要求，
+继续深入阶段 3 的“区域边界”这一块，修掉了一个真实缺陷。
+
+
+一、我发现的问题
+----------------------------------------------------------------
+
+阶段 3 会为每个连通 Face 区域算边界 Edge，再据此算闭合环、周长和投影面积。
+我发现 BOTTLE 有 51 个区域、mould_04 有 27 个区域的投影状态是 `UNAVAILABLE`，
+其中一批区域是 `NO_BOUNDARY_EDGES`，也就是“一条边界边都没有”。
+
+我抽查了 BOTTLE 的区域 32（只有一个平面 Face，编号 269）：
+
+    region_id = 32
+    face_ids = [269]
+    surface_type_counts = {'GeomAbs_Plane': 1}
+    boundary_edge_count = 0
+    boundary_topology_status = NO_BOUNDARY_EDGES
+
+一个平面 Face 不可能真的没有边，所以我直接回到 OCP 去查真相。
+
+
+二、我用 OCP 拿到的权威证据
+----------------------------------------------------------------
+
+我读取真实 BOTTLE.stp，用 OCP 自己的拓扑遍历统计“每条 Edge 被多少个 Face 引用”：
+
+    faces = 311
+    OCP-unique edges = 838
+    OCP edge->face incidence histogram = {1: 185, 2: 605, 3: 48}
+
+也就是说：838 条边里，有 185 条只被 1 个 Face 引用（自由边/开放边），
+605 条被 2 个 Face 引用（正常流形边），48 条被 3 个 Face 引用（非流形边）。
+
+我同时用项目自己的边匹配（哈希桶 + IsSame）统计，得到的直方图与 OCP 完全一致：
+`{1: 185, 2: 605, 3: 48}`。这说明项目的边编号是可信的，这 185 条就是模型里
+真实的自由边，不是匹配失败造成的重复边。
+
+我又查了区域 32 的那个 Face：
+
+    face 269 type = GeomAbs_Plane
+    edge_count = 4
+    edges = [610, 611, 612, 613]  全部是 GeomAbs_Line
+    edge 610/611/612/613 的引用 Face 都只有 [269]
+
+结论：Face 269 的 4 条边都是自由边，它们本该构成这个区域的矩形边界。
+
+
+三、我定位到的根因
+----------------------------------------------------------------
+
+`src\cad_inspector\detection\step_features.py` 的 `_build_regions` 里，
+旧的边界判定是：
+
+    if component.intersection(incident_faces) and not incident_faces.issubset(component)
+
+对一条只被 1 个 Face 引用的自由边来说，`incident_faces = {f}`，而 f 就在本区域里，
+于是 `incident_faces.issubset(component)` 为真，`not ...` 为假，这条自由边就被
+当成“区域内部边”丢掉了。开放壳体（模具曲面模型）的自由边因此全部消失，
+区域边界为空，闭合环和投影面积自然算不出来。
+
+
+四、我做的修复
+----------------------------------------------------------------
+
+我把边界判定改成：
+
+    if component.intersection(incident_faces) and (
+        len(incident_faces) < 2
+        or not incident_faces.issubset(component)
+    )
+
+含义是：只有“至少被 2 个 Face 引用、且全部落在本区域内”的边才算内部边；
+只被 1 个 Face 引用的自由边一定落在区域边界上。
+
+我同时新增了针对性测试，并修正了受影响的既有断言：
+
+1. `tests\test_step_features.py`
+   新增 `test我方把自由边计入区域边界并算出闭合投影`：单面开放壳体区域
+   的 4 条自由边应进入边界，形成闭合环，投影面积应为 100 mm²。
+   并修正合成盒体两条边界断言（面 3 的边 9/10/11、面 4 的边 14 是自由边）。
+2. `tests\test_step_engineering.py`
+   圆柱区域的自由边 5 进入边界，断言从 `[2]` 改为 `[2, 5]`。
+
+
+五、我重生成的正式输出与前后对比
+----------------------------------------------------------------
+
+我用修复后的代码重生成四套正式输出：
+
+1. `outputs\stage3_regions_v3\BOTTLE_step_regions_v3.json`（耗时 100.4 秒）
+2. `outputs\step_engineering\BOTTLE\*`（耗时 94.5 秒）
+3. `outputs\stage3_regions_v3\mould_04_step_regions_v3.json`（耗时 307.0 秒）
+4. `outputs\step_engineering\mould_04\*`（耗时 133.6 秒）
+
+BOTTLE（141 个区域）修复前后：
+
+    主边界投影状态   COMPUTED 61 -> 77，NON_PLANAR 29 -> 48，UNAVAILABLE 51 -> 16
+    主边界环角色     ISOLATED 85 -> 118，UNAVAILABLE 51 -> 16
+    环关系           SINGLE 85 -> 118，NESTED 4 -> 6，NO_CLOSED_LOOPS 51 -> 16
+    零边界区域       51 -> 0
+    边界拓扑状态     CLOSED_LOOP_CANDIDATE 120，OPEN_BOUNDARY_CANDIDATE 21
+
+mould_04（1393 个区域）修复前后：
+
+    边界集合发生变化的区域   93 个
+    新增进边界的自由边       正好 240 条（与 OCP 统计的 240 条自由边一致）
+    空边界区域               27 -> 21
+    边界拓扑状态             CLOSED 1276，OPEN 96，NO_BOUNDARY 21
+    分类计数（角色/投影/环关系）保持不变
+
+我方对 mould_04 的说明：修复后 240 条自由边全部按真实拓扑进入对应区域边界，
+93 个区域的边界证据变完整；其中 6 个区域从“无边界”变成“开放边界但仍无闭合环”，
+所以 mould_04 的 `UNAVAILABLE` 计数仍是 27。剩下的 21 个 `NO_BOUNDARY_EDGES`
+区域，是 Face 之间只在本区域内两两相接的闭合曲面片，本来就没有边界边，
+这是正确结果，不是缺陷。
+
+
+六、我方验证
+----------------------------------------------------------------
+
+1. 定向测试：`tests\test_step_features.py` 22 passed；
+   阶段 3 / 工程 / 正式契约 / OCP / 复现性 / 修补 / 拓扑 合计 68 passed。
+2. 全量测试：285 passed。
+3. 完整门禁 `python -B scripts\verify_project.py` → `status=PASS`：
+   pytest 285 passed、compileall 返回码 0、pip check 无断依赖、
+   outputs_audit 111/118 有效、0 损坏、7 跳过、PASS、cache_cleanup 剩余 0。
+4. 我用 OCP 直接复核了边面引用直方图，与项目统计逐项一致，证明修复依据可靠。
+
+
+七、我方诚实保留的限制
+----------------------------------------------------------------
+
+1. 投影面积仍是每段弧 16 段的弦近似，不是 NURBS 精确面积。
+2. mould_04 阶段 3 重生成耗时从记录的 194.4 秒升到 307.0 秒：边界边变多后，
+   曲线采样和环与环的多边形关系判定都变重。这是正确性换来的真实代价，
+   我没有把它隐藏成“性能无变化”。
+3. BOTTLE 仍有 16 个、mould_04 仍有 27 个区域没有闭合环；它们是真正的开放
+   边界或非流形区域，需要后续按台阶/桥接规则处理，本轮不伪造闭合。
+4. 本轮只修区域边界这一块，不改变分型线、分型面、GUI、XT/PRT 等未完成项的
+   BASELINE 状态。
+
+
+八、本轮结论
+----------------------------------------------------------------
+
+我用 OCP 权威证据定位并修掉了一个真实缺陷：自由边被错误地从区域边界里丢弃。
+修复后 BOTTLE 的 `UNAVAILABLE` 从 51 降到 16，零边界区域从 51 清零；
+mould_04 的 240 条自由边全部按真实拓扑进入边界。全量测试 285 passed，
+完整门禁 PASS。所有正式输出已用修复后的代码重新生成。
+
+本轮详细过程同时写入：
+   D:\STP_STL_Missing_Region_Recognition\开发记录.txt
+   D:\STP_STL_Missing_Region_Recognition\reports\开发过程记录.txt

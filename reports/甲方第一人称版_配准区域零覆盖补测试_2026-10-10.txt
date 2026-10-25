@@ -1,0 +1,107 @@
+我方给零覆盖的配准区域补上测试
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我怎么找到这块缺口的
+
+目标里有"按不同的区域部分来实现这个代码，补充所有的需求"。我用和上次
+找孤立 CLI 同样的办法，把范围从"CLI 模块"扩大到**全部源模块**——查每个
+模块有没有被 tests 引用，命中数为 0 的就是没验证过的区域：
+
+    src\cad_inspector\output\repair_report.py
+    src\cad_inspector\output\step_repair_report.py
+    src\cad_inspector\output\step_report.py
+    src\cad_inspector\output\voxel_report.py
+    src\cad_inspector\registration\rigid.py        <- 我选了这个
+
+我选 `registration/rigid.py` 下手，理由是**风险最高**：它不是没人用的死
+代码 —— `pipeline.py`、`visualization_cli.py`、`detection/missing_regions.py`
+都在调它。而配准是后续一切偏差判定的地基：**两个模型没对齐，再好的距离
+算法也只会报出假缺陷**。visualize 的副标题正是靠配准残差告诉看图的人
+"这个红框有多可信"。一个在关键链路上却零覆盖的模块，不该留着。
+
+二、我补的用例（6 个，全过）
+
+    tests\test_registration_rigid.py
+
+1. **四种模式都产出合法质量报告**（none / centroid / pca / icp 参数化）：
+   mode 回显正确、quality 落在 good/warning/bad、残差非负。
+
+2. **质心配准真的把已知平移纠正掉**（这是我刻意加的实质检查）：
+
+    我造一个整体平移 (50, -20, 10) 的立方体（模长约 55mm），
+    none 模式下平均残差应当是这个量级（断言 > 10mm），
+    centroid 之后必须降到原来的 **1% 以下**。
+
+   为什么必须加这条：只断言"四种模式不崩"的话，**一个永远返回恒等
+   变换的假实现也能全部通过**。这条才真正验证配准在干活。
+
+3. **拒绝空网格而不是静默返回恒等变换**：源码注释里明写要避免"把没配准
+   伪装成配准成功"，所以空网格必须抛 ValueError。
+
+三、我踩的一个小坑
+
+我第一版断言写的是 `result.mean_residual`，实际字段名是
+`mean_residual_mm` / `p95_residual_mm`。AttributeError 直接告诉我正确
+名字（`Did you mean: 'mean_residual_mm'?`），改掉即可。
+
+四、回归里的两次失败，一次是别人的瞬时状态、一次是真 bug
+
+**第一次**（全量）：`test_step_features.py` 6 个 NameError。我按上次经验
+以为是并行会话写文件的瞬时状态。
+
+**等 90 秒单独复跑，仍然失败**——所以不是瞬时状态，是真 bug：
+
+    src\cad_inspector\detection\step_features.py:2408
+    NameError: name 'step' is not defined
+
+我查了函数 `_point_in_polygon_2d_batch` 的签名：只有 `points` / `polygon`
+/ `y_levels`，**没有分块大小参数**，但分块循环 `for start in range(0,
+edge_count, step)` 用到了 `step`。任何一次调用都会崩。
+
+分块本身是**有意的性能设计**（docstring 写明：outer 50 条边时批量版比
+逐点版快约 20 倍、4000 条边时反而略慢，差别在缓存），所以正确修法是
+**补上 step 的定义**，不是把循环摊平成整块（摊平会丢掉那部分收益）。
+
+我写好补丁准备应用时，发现锚点已经变了——**并行会话在我等的那 90 秒里
+自己修好了**，而且比我打算写的固定值 512 更好：
+
+    step = max(1, int(4_000_000 // max(1, m)))
+
+按列数**动态**算分块大小，自适应缓存。我的补丁因此没应用（count=0），
+正好不重复劳动。
+
+五、我执行的验证
+
+- 新增 `tests\test_registration_rigid.py`：6 passed。
+- 全量回归：**481 passed in 374.36s**（= 475 原有 + 6 新增）。
+- `compileall` 退出码 0。
+
+六、当前权威状态（修补部分未变）
+
+11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**，分母完整。
+`训练集/1` 四条路全无效、`训练集/4` 我主动不动它。
+**任务书 92% 仍未达成。**
+
+七、我保留的限制
+
+1. 任务书 92% 未达成（81.8%），卡点唯一是 `训练集/1`。
+2. **另外 4 个零覆盖模块我没动**
+   （`output/repair_report.py`、`output/step_repair_report.py`、
+   `output/step_report.py`、`output/voxel_report.py`）。我只补了配准
+   一个，选它的理由是风险最高（在关键链路上），不代表其他四个没问题。
+3. 我的判定标准是"tests 里有没有出现模块名"，**这是间接证据**——一个
+   模块可能被引了但覆盖很浅。我没有跑覆盖率工具去量化。
+4. 配准我只测了 `align_mesh`，`apply_registration` 以及内部
+   `_estimate_scale` / `_icp_transform` / `_kabsch` 等**没有单独测**。
+5. 我的"平移被纠正"断言用的是**合成立方体**，不是真实 STEP 配准场景；
+   ICP 模式在真实噪声数据上的收敛表现我没验证。
+6. 顶层 SUCCESS 与区域级 MANUAL_REVIEW_REQUIRED 并存（上一轮发现），
+   我**没改**它，等你判断。
+7. `visualize --regions-kind inspection` 那种我仍没走。
+8. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+9. 合成基准 `测试集/8#face3` 我没修好；合成 `case_count` 14→17 未查明。
+10. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+11. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+代码位置：新增 `tests\test_registration_rigid.py`（本轮**未改生产代码**）。

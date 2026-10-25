@@ -1,0 +1,68 @@
+我方二进制 STL 头部换行误判修复记录
+日期：2026-10-07
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方在复核 STL 类型判定时，构造了一组极端输入，发现一个真实的假拒绝：
+合法的二进制 STL，如果它的 80 字节头部里含有换行，就会被 load_stl 拒绝，
+而且报的是一句与事实不符的错误：
+
+  我发现 ASCII STL 不包含任何三角面：...\with_newline.stl
+
+我用最小复现确认了这一点。二进制 STL 的头部是 80 字节自由文本，很多导出器会
+写成 "solid 零件名"，其中一部分会带上换行或 CRLF。也就是说，这是一个完全
+可能出现在甲方真实数据里的输入，却会被我方当成坏文件挡掉。
+
+二、根因
+
+问题出在 geometry\stl.py 的 _has_plausible_binary_layout：
+
+1. 它先判断 data[:80] 里有没有 \n 或 \r，命中就直接 return False；
+2. 这一步跑在了 _has_exact_binary_size 之前，于是"头部带换行的二进制 STL"
+   根本没机会走到长度精确匹配这个最强的二进制信号；
+3. 接着 _looks_like_ascii_stl 会因为二进制体里没有 facet/vertex 也返回 False；
+4. 最后落到 _looks_like_ascii_stl_header（只要以 solid 开头就返回 True），
+   抛出"ASCII STL 不包含任何三角面"这个与事实相反的错误。
+
+三、我方怎么改
+
+我把长度精确匹配提到换行启发式之前：
+
+  if len(data) < 84: return False
+  if _has_exact_binary_size(data): return True      # 新增：最强信号优先
+  if b"\n" in data[:80] or b"\r" in data[:80]: return False
+  ...
+
+为什么这样是安全的：二进制 STL 的精确长度满足 84 + 50n == len(data)，其中 n 是
+偏移 80 处的 4 字节小端整数。ASCII 文本要在偏移 80 处凑出这个 n，需要第 2、3、4
+个字节全为 NUL，而 ASCII STL 里不会有 NUL，所以不会把文本文件误判成二进制。
+
+四、我执行的验证
+
+我新增用例 test我方能识别头部带换行的_binary_stl，覆盖 LF 和 CRLF 两种头部，
+断言两种文件都能解析成 binary_stl 且有 1 个三角面。
+
+命令与结果：
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+"tests/test_extreme_inputs.py::test我方能识别头部带换行的_binary_stl"
+"tests/test_extreme_inputs.py::test我方能识别_header伪装的_binary_stl"
+"tests/test_extreme_inputs.py::test我方对零三角面_STL_给出与事实相符的错误"
+"tests/test_extreme_inputs.py::test我方拒绝空文件和截断_binary_stl"
+tests/test_artifact_audit.py
+-> 19 passed in 2.27s
+
+我同时确认既有的"零三角面二进制 STL"和"空 ASCII STL"仍然各自报出与事实相符的
+错误，没有被这次调整带偏。
+
+五、我保留的限制
+
+1. 我只调整了 STL 类型判定的顺序，没有改任何几何算法、阈值或输出格式。
+2. 头部扫描仍只看前 80 字节，这与二进制 STL 规范一致。
+3. 本轮机器内存被其他项目占满（15.7GB 物理内存只剩 0.5GB），单进程全量 pytest
+   会触发 Windows 资源不足的致命异常；我改用逐文件独立进程跑完 48 个文件、
+   合计 301 passed，FAILED_FILES 为空。内存充足时应再跑一次
+   scripts/verify_project.py 作为权威门禁。
+4. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、
+   工业 G0/G1/G2、GUI、安装包或生产验收。

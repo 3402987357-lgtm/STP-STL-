@@ -1,0 +1,93 @@
+我方给修补报告 writer 补测试，钉住"拒绝 NaN"这个设计决定
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、这一轮做什么
+
+上一轮我查出 5 个零覆盖模块，只补了 `registration/rigid.py`，剩 4 个
+`output/` 下的 writer 没动：
+
+    output/repair_report.py        91 行
+    output/step_repair_report.py  103 行   <- 我选了这个
+    output/step_report.py          29 行
+    output/voxel_report.py         30 行
+
+我先确认它们**都在用**（不是死代码）：每个都有 `__init__.py` 引用加
+调用方。选 `step_repair_report` 下手，理由是**它写出的 JSON 就是甲方
+要看的修补报告**，是这条链路的最终产物、风险最高。
+
+二、我钉住的重点：拒绝把 NaN 写成打不开的报告
+
+`write_step_repair_json` 里有一处刻意的设计决定（源码注释明写）：
+
+> 偏差量来自 OCP 的曲面求交，真实件上会返回 NaN（例如补面与原面无
+> 有效交点时）。Python 的 json.dumps 默认会把 NaN 写成裸的 ``NaN``
+> 字样，那不是合法 JSON，甲方那边的解析器会直接失败。我宁可这里
+> 报错、让人看见"这个件补面求交失败了"，也不写出一份打不开的报告。
+
+所以我写了这个用例，并且**连"报错时不该留下半份报告"一起断言**：
+
+    bad = _result(diagnostics={"planarity_error_mm": float("nan")})
+    with pytest.raises(ValueError):
+        write_step_repair_json(bad, target)
+    assert not target.exists(), "我报错了就不该留下文件"
+
+这类决定必须有用例守着——否则哪天被人"顺手去掉 allow_nan=False"
+不会有人发现，而失效的症状是甲方那边解析器炸掉，离改动点很远。
+
+三、我把自己写弱的一个用例改实了
+
+我第一版的 CSV 用例是这样：
+
+    lines = [非空行]
+    assert lines, "我不该写出空文件"
+
+**这等于没验证**——一个只写表头、把区域全丢掉的实现也能通过。我改成了
+实质检查：造两个真实区域，行数必须等于 表头 1 + 区域 2 = 3，且两个
+region_id 都要出现在数据行里。
+
+四、我补的用例（3 个，全过）
+
+    tests\test_output_reports.py
+
+1. **写出的报告是合法 JSON 且以换行结尾**：能被 `json.loads` 解析、
+   `schema_version` 为 `step-repair-1.3`、文件以 `\n` 结尾（缺了它
+   `git diff` 会显示 "\ No newline at end of file"，批量比对凭空多噪音行）。
+2. **拒绝把 NaN 偏差写成打不开的报告**（见第二节）。
+3. **CSV 行数 = 表头 1 + 区域数**：不静默少写行。
+
+五、我执行的验证
+
+- 新增 `tests\test_output_reports.py`：3 passed。
+- 全量回归：**484 passed in 319.35s**（= 481 + 3）。
+- `compileall` 退出码 0。
+
+六、当前权威状态（修补部分未变）
+
+11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**，分母完整。
+`训练集/1` 四条路全无效、`训练集/4` 我主动不动它。
+**任务书 92% 仍未达成。**
+
+七、我保留的限制
+
+1. 任务书 92% 未达成（81.8%），卡点唯一是 `训练集/1`。
+2. **另外 3 个 writer 我仍然没补**
+   （`repair_report.py`、`step_report.py`、`voxel_report.py`）。它们代码量
+   更小（29-91 行），但"更小"不等于"没问题"，我只是按风险排了先后。
+3. `step_repair_report` 我只测了**写出**这一层，**没有验证报告内容的
+   业务正确性**——比如 `schema_version` 该不该是 1.3、字段命名对不对，
+   我只做了往返解析，没有对照甲方口径核字段。
+4. 我的 CSV 断言用的是**手造的合成区域**，不是真实修补产物；真实件上
+   `deviation_max_mm` 可能是 "n/a" 也可能是数字，两种我都只覆盖了
+   字符串一种。
+5. 上一轮配准补测试时我说过"模块名出现与否只是间接证据"，**这一轮我
+   仍然没有跑覆盖率工具去量化**，只是继续按引用数为 0 来选目标。
+6. 顶层 SUCCESS 与区域级 MANUAL_REVIEW_REQUIRED 并存（前两轮发现），
+   我**没改**它，等你判断。
+7. `visualize --regions-kind inspection` 那种我仍没走。
+8. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+9. 合成基准 `测试集/8#face3` 我没修好；合成 `case_count` 14→17 未查明。
+10. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+11. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+代码位置：新增 `tests\test_output_reports.py`（本轮**未改生产代码**）。

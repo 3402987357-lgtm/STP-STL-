@@ -1,0 +1,134 @@
+我方真实零件 STEP 缺面基准与三个修补缺陷修复记录
+日期：2026-10-07
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+任务书核心任务三要求"输出修复后的 STP 文件"和 JSON 报告，但项目此前只有
+立方体单测（`test_step_repair_ocp.py` 用 10mm 立方体去掉 1 个面造开放壳），
+在甲方真实零件几何上一条证据都没有。我这一轮的目标就是把 STEP 修补拉到
+真实零件上量一遍，过程中修掉三个真实缺陷。
+
+二、我先摸清真实零件的底数
+
+我用 `io.step_topology.inspect_step_topology` 把甲方全部 21 个 STEP 逐个
+读了一遍（跳过超过 24 MiB 的 训练集\1 与 训练集\5），结果是：
+
+- **封闭零件（`boundary=0`，可做基准母体）10 个**：测试集 8/9/10/11/12、
+  训练集 0/2/3/6；
+- **自带开放边界（`SOLID=0`，本身就是破损件）11 个**：测试集 1(7)、2(12)、
+  3(14)、4(11)、5(13)、6(6)、7(8)、训练集 4(11)、7(19)、8(11)；
+- 全部 `non_manifold_edge_count = 0`，没有非流形拓扑。
+
+这 11 个自带开放边界的零件，正是任务书要处理的破损场景，我原样保留不动。
+
+三、我新增的基准工具
+
+`scripts\benchmark_step_repair.py`（schema `step-repair-benchmark-1.0`）：
+筛封闭零件当母体 → 用 OCP 删掉固定位置的 1 或 3 个 Face 造已知面积缺面 →
+跑项目自己的 `repair_step_holes` → 用独立的 `inspect_step_topology` 复核
+输出，判断开放边界是否真的闭合。母体和网格侧基准一致：7 个封闭母体 ×
+2 种缺面规模 = 14 个用例（受 16 MiB 体积预算限制）。
+
+四、我修掉的三个真实缺陷
+
+缺陷 1：几何容差与平面度门禁共用一个字段，放大门禁会自毁
+
+  根因：`max_planarity_error_mm` 同时被当成"串 Wire 的连接容差""采样去重
+  阈值""首尾闭合判据"和"平面度门禁"。采样去重是"新点与上一点距离 > 容差
+  才保留"，真实零件一旦为放宽平面度门禁而放大这个数，采样点会被过滤干净。
+  我在 `训练集\6` 挖 1 个面时实测：tol=0.05 → 17 点，tol=2.0 → 6 点，
+  tol=1e9 → 只剩 1 点，最终报"边界采样点数量不足"这种与事实不符的错误。
+
+  修法：在 `domain\repair.py` 拆出 `geometry_tolerance_mm`（串线/采样/缝合）
+  与 `wire_closure_tolerance_mm`（首尾闭合），`max_planarity_error_mm` 只管
+  平面度门禁，三者互不牵连，默认值都保持 0.05（既有行为不变）。
+
+缺陷 2：参数曲线取不到时把 G0 一起误判为失败
+
+  根因：`_audit_patch_continuity` 里 `BRep_Tool.CurveOnSurface_s` 在"边没有
+  落在补面参数域上"时返回 `None`，随后 `patch_curve.Value()` 抛
+  `AttributeError: 'NoneType' object has no attribute 'Value'`，被外层
+  except 一把抓住，把 G0/G1/G2 全部判失败。真实零件的曲面填充补面经常
+  拿不到参数曲线，于是 G0 明明是贴合的，报告却写"证据不足"。
+
+  修法：显式判空，只对 G1/G2 降级（该边不参与判定），G0 继续照常审计；
+  源面同理过滤掉取不到参数曲线的项。
+  效果：`训练集\6#face1` 的 G0 由假失败变真通过，G0 最大偏差 0.0。
+
+缺陷 3：平面建不出面时曲面填充也不试，形成无解死锁
+
+  根因：曲面填充候选的触发条件里写的是 `elif`，且要求"平面度确实超差"。
+  真实零件上大量出现"采样平面度在门限内，但 OCP 仍拒绝用该 Wire 建平面面"
+  （`BRepBuilderAPI_NotPlanar`）。这类环既建不出平面面、又拿不到曲面候选，
+  甲方看到的结果就是"这里有个洞但我什么都没做"。
+
+  修法：改 `elif` 为独立的 `if`（加 `patch is None` 守卫），并把触发条件
+  放宽为"平面度超差 **或** 平面建面已经失败"，用 `planar_patch_failed`
+  记录平面建面到底试过没有。
+  效果：`训练集\2#face1` 从完全无动作变为闭合（边界 6 → 0，G0 验证通过，
+  修补面积 10.97 mm²）。
+
+五、我另外处理的一个 OCP 段错误
+
+放宽轮第一次全量跑时进程直接退出（退出码 `-1073741819`，即 0xC0000005
+段错误）。我逐层插桩定位到 `_make_surface_filling_candidate` 里的
+`BRepOffsetAPI_MakeFilling.Build()`：当**两条及以上**边界边同时带 support
+面时崩溃，且这是 OCP 原生崩溃，Python 层 try/except 完全捕获不到。
+最小对照：同一 Wire，不带 support → 成功；挂 1 条 support → 成功；
+挂 2 条 → 进程直接死。稳定复现于 `测试集\11#face1`。
+
+修法：我只给第一条边界 Edge 挂 support 面，其余边退化为无 support 约束。
+这是规避不是根治，代码里已写 `ponytail:` 注释标明上限与升级路径
+（OCP 修复后恢复多 support，或改走子进程隔离把崩溃挡在门外）。
+
+六、实测结果
+
+14 个用例（7 个封闭母体 × 1/3 面）：
+
+| 配置 | 孔洞闭合 | 1 面 | 3 面 | 落盘 |
+|---|---|---|---|---|
+| 默认（保守） | **0/14 = 0%** | 0/7 | 0/7 | 0/14 |
+| 放宽（耳切+曲面候选+写出复核） | **7/14 = 50%** | 5/7 | 2/7 | 11/14 |
+
+放宽轮逐例（damagedB → outB）：
+- 闭合成功 7 例：测试集 11#face1（8→0）、测试集 12#face1（6→0）、
+  训练集 0#face1（6→0）、训练集 2#face1（6→0）、训练集 2#face3（14→0）、
+  训练集 6#face1（4→0）、训练集 6#face3（16→0）；
+- 部分闭合 3 例：测试集 11#face3（18→1）、测试集 12#face3（20→1）、
+  训练集 0#face3（14→1）——都只差 1 条边，属多环合并后残留；
+- 完全无动作 4 例：测试集 9#face1/#face3、测试集 10#face1、
+  均为 OCP `MakeFilling` 自身 `IsDone()` 为假（"非平面曲面填充没有完成"），
+  不是我方逻辑死锁。
+
+耗时：放宽轮 min/中位/max = 0.702 / 1.9535 / 3.425 s，全部远低于任务书
+8 秒的单模型要求。连续性：11 例 `G0_VERIFIED`，4 例 `NOT_VERIFIED`；
+没有任何一例拿到 G1 或 G2。
+
+七、我执行的验证
+
+- 新增 `tests\test_step_repair_sampling.py`（6 个用例）：采样容差放大到零件
+  尺度仍保留边界点、几何容差与平面度门禁互相独立、拒绝非正容差、
+  段错误降级写法被钉住、平面建面失败仍尝试曲面候选。
+- 定向回归：test_step_repair_ocp、test_step_repair_sampling、test_mesh_repair、
+  test_mesh_repair_nonconvex、test_mesh_repair_benchmark、test_cli_commands、
+  test_pipeline_units -> 34 passed。
+- 全量回归：`316 passed in 28.78s`；`compileall` 退出码 0。
+
+八、我保留的限制（不能写成达标）
+
+1. 50% 是**合成缺面基准**上的闭合率，不是甲方标注真值上的成功率；
+   任务书 92% 修补成功率仍未达成。
+2. 默认配置仍是保守策略，闭合率 0%，我没有擅自改默认值。
+3. 没有一例拿到 G1/G2；G0 只证明边界贴合，不证明曲面接得顺。
+4. 多环合并用例（挖 3 个面）普遍残留 1 条边界边，需要多环联合缝合。
+5. support 面只挂 1 条是规避 OCP 段错误，非根治。
+6. 11 个自带开放边界的真实破损零件本轮未纳入修补（它们是"真实破损"，
+   没有"完整母体"可对照，无法判闭合），只能留到有标注真值后再验。
+7. 本轮耗时在同机并发任务下测得，属上界式测量。
+
+代码位置：`src\cad_inspector\domain\repair.py`、
+`src\cad_inspector\repair\step_hole.py`；
+用例：`tests\test_step_repair_sampling.py`；
+基准：`scripts\benchmark_step_repair.py`；
+输出：`outputs\step_repair_benchmark`、`outputs\step_repair_benchmark_relaxed`。

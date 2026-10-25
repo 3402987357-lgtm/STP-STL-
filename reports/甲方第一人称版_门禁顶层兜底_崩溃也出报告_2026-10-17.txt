@@ -1,0 +1,86 @@
+门禁顶层兜底：主体崩溃也必须出报告（甲方第一人称版）
+日期：2026-10-17
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+对象：scripts\verify_project.py::run_gate
+
+────────────────────────────────────────────
+零、一句话结论
+────────────────────────────────────────────
+"超时把门禁带崩""缓存清理把门禁带崩"这两类缺口，我前面都是**逐个调用点**
+补的。但它们其实是**同一个总根**：`run_gate` 主体外面**没有顶层兜底**，
+所以 `_run_gate_locked` 里**任何一个**没包异常的调用崩掉，整轮门禁就
+"没有报告"。与其继续逐个补，我把这个总根一次性兜住：
+**主体抛任何意外异常，都先写一份带 traceback 的 FAIL 报告，再把异常抛出去。**
+
+────────────────────────────────────────────
+一、病灶：未受保护的调用点清单（我逐行读出来的）
+────────────────────────────────────────────
+`_run_gate_locked` 里这些调用**都没有** try/except：
+  1) `_run(...)` ×3（pytest / compileall / pip_check）——
+     只接了 `subprocess.TimeoutExpired`；`subprocess.run` 自己抛的
+     `OSError`（子进程根本拉不起来）**没接**；
+  2) `audit_artifacts(ROOT / "outputs")` —— 审计器自身抛错就带崩；
+  3) `audit_target.write_text(...)` —— 磁盘满 / 目标被占用；
+  4) `purge_cache_dirs(ROOT)` ×2 —— **已单独修过**（尽力而为）；
+  5) `_load_sibling_script("comment_ratio.py")` —— 脚本缺失直接 RuntimeError；
+  6) `comment_ratio_tool.measure(...)`；
+  7) `record_work.append_record(...)` —— 开发记录写不出去；
+  8) `_write_gate_report(...)` —— 报告自己写不出去。
+这些里**任意一个**崩掉，`run_gate` 的 `finally` 只做"放锁"，
+**不写报告**；异常继续冒到 `main`（也不接）-> 进程带 traceback 退出，
+`reports\verification_gate.json` 保持上一轮内容，读报告的人会误以为
+最近一次就是那个状态。
+
+────────────────────────────────────────────
+二、反向验证：兜底真的是它在起作用
+────────────────────────────────────────────
+我把源码里的 `except Exception as error:` 换成
+`except KeyboardInterrupt as error:`（等于**把兜底关掉**），
+再让 `_run_gate_locked` 抛 `RuntimeError("装配阶段炸了")`，跑同一场景：
+
+  兜底被关掉（改前的行为）  -> 报告**没有**落盘（report exists = False）
+  兜底生效（当前代码）      -> 报告**落盘**（report exists = True）
+
+也就是：这份 FAIL 报告**确实**是兜底写出来的，不是别处顺手写的。
+
+────────────────────────────────────────────
+三、修法（一处，顶层）
+────────────────────────────────────────────
+`run_gate` 的 try 里加一个 `except Exception`：
+  1) `_crash_report(error)` 组一份 FAIL 报告，`stages=[{name:"gate_crash",
+     ok:False, summary:"门禁在装配或收尾阶段崩溃：<类型>: <消息>"}]`，
+     并带上 `traceback`；
+  2) 写到该轮的报告路径（默认 `reports\verification_gate.json`，
+     沿用 `_write_gate_report`，所以**失败副本**也会一起留）；
+  3) 写报告本身再失败（磁盘满/被占用）时只吞 `OSError`，**不掩盖原始异常**；
+  4) 最后**照旧把异常抛出去** —— 报告已落盘，但失败保持响亮，
+     不把一个编程错误静默降级成一次普通 FAIL。
+
+────────────────────────────────────────────
+四、验证
+────────────────────────────────────────────
+1) 反向验证：见第二节（兜底关掉 -> 无报告；打开 -> 有报告）；
+2) 新增用例 `test我方门禁主体崩溃也要留下失败报告`：monkeypatch 让
+   `_run_gate_locked` 抛错，断言 `run_gate` 仍抛 `RuntimeError`、
+   但报告已落盘且 `status=FAIL`、`stages[0].name=gate_crash`、
+   summary 里含 `RuntimeError`；
+3) `tests\test_verify_project_gate.py`：**18 passed**（原 17 + 新增 1）；
+4) 连带会检查测试/脚本的用例（bytecode policy / docstring integrity /
+   run_tests guard）：**24 passed**；
+5) 全量门禁（2026-10-17T01:44:46）：**PASS，694 passed in 1051.80s**，
+   我的改动在这一轮里被覆盖并跑通。
+
+────────────────────────────────────────────
+五、我保留的限制
+────────────────────────────────────────────
+1) 兜底把"崩溃"变成"有报告的失败"，但**不修**那些调用点本身的缺陷；
+   它只是保证结论一定交得出去。逐个调用点的健壮性仍可继续做。
+2) 我选择"写报告 + 照旧抛异常"，而不是"吞掉异常返回 FAIL"：
+   前者保留响亮的失败（编程错误不该被静默降级），后者会让 `main`
+   打印一份 FAIL 就退出。这一条是**设计选择**，不是唯一正确解。
+3) 我这次跑的门禁 `source_changed_during_run=True` —— 因为对方在
+   01:33~01:37 改了 5 个文件（atomic.py / cli.py / annotation_review.py
+   及两个测试）。所以本轮 PASS 建立在**移动快照**上；但"我的改动被
+   694 条用例覆盖并跑通"这一点是确定的。
+4) 这条与"嵌套 pytest 偶发失败""缓存清理崩溃"是**三条相关的病因**：
+   前两条是具体调用点，这条是它们的共同总根。

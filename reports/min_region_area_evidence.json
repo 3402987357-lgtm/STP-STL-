@@ -1,0 +1,125 @@
+{
+  "schema_version": "min-region-area-evidence-1.0",
+  "registration_mode": "centroid",
+  "parts_analyzed": 14,
+  "total_candidate_regions": 116948,
+  "quantiles": {
+    "p50": 0.002029581422997559,
+    "p90": 0.004676195474806605,
+    "p99": 0.011725500043666903,
+    "max": 5971.747830025512
+  },
+  "count_at_or_above": {
+    "0.001": 99159,
+    "0.005": 9038,
+    "0.01": 1609,
+    "0.02": 495,
+    "0.05": 272,
+    "0.1": 198,
+    "0.2": 147,
+    "0.3": 123,
+    "0.5": 99
+  },
+  "default_min_region_area_mm2": 0.5,
+  "conclusion": "噪声碎片 99% 低于 0.0117mm2；0.5 门限远高于噪声主体，降到 0.3 只多放进 24 个区域（14 件），不会放进噪声洪流。",
+  "parts": [
+    {
+      "part": "测试集_1",
+      "regions_at_0.0": 2234,
+      "regions_at_0.5": 9,
+      "band_0.3_to_0.5": 4,
+      "below_0.3": 2221
+    },
+    {
+      "part": "测试集_10",
+      "regions_at_0.0": 79,
+      "regions_at_0.5": 6,
+      "band_0.3_to_0.5": 2,
+      "below_0.3": 71
+    },
+    {
+      "part": "测试集_11",
+      "regions_at_0.0": 8,
+      "regions_at_0.5": 4,
+      "band_0.3_to_0.5": 1,
+      "below_0.3": 3
+    },
+    {
+      "part": "测试集_12",
+      "regions_at_0.0": 24,
+      "regions_at_0.5": 6,
+      "band_0.3_to_0.5": 1,
+      "below_0.3": 17
+    },
+    {
+      "part": "测试集_2",
+      "regions_at_0.0": 13,
+      "regions_at_0.5": 3,
+      "band_0.3_to_0.5": 1,
+      "below_0.3": 9
+    },
+    {
+      "part": "测试集_3",
+      "regions_at_0.0": 73843,
+      "regions_at_0.5": 2,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 73841
+    },
+    {
+      "part": "测试集_4",
+      "regions_at_0.0": 37131,
+      "regions_at_0.5": 10,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 37121
+    },
+    {
+      "part": "测试集_5",
+      "regions_at_0.0": 16,
+      "regions_at_0.5": 12,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 4
+    },
+    {
+      "part": "测试集_6",
+      "regions_at_0.0": 7,
+      "regions_at_0.5": 6,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 1
+    },
+    {
+      "part": "测试集_7",
+      "regions_at_0.0": 12,
+      "regions_at_0.5": 8,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 4
+    },
+    {
+      "part": "测试集_8",
+      "regions_at_0.0": 1801,
+      "regions_at_0.5": 8,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 1793
+    },
+    {
+      "part": "测试集_9",
+      "regions_at_0.0": 13,
+      "regions_at_0.5": 0,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 13
+    },
+    {
+      "part": "训练集_0",
+      "regions_at_0.0": 1765,
+      "regions_at_0.5": 23,
+      "band_0.3_to_0.5": 15,
+      "below_0.3": 1727
+    },
+    {
+      "part": "训练集_4",
+      "regions_at_0.0": 2,
+      "regions_at_0.5": 2,
+      "band_0.3_to_0.5": 0,
+      "below_0.3": 0
+    }
+  ]
+}

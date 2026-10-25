@@ -1,0 +1,171 @@
+我方第一人称版 真实数据阈值标定与单模型耗时实测
+记录日期：2026-10-06
+
+一、本轮我要解决的问题
+
+上一轮我方新增了"按模型尺度的自适应检测阈值"（`detection\threshold.py`），
+但两个系数 `auto_threshold_scale_ratio`（默认 0.002）和
+`auto_threshold_residual_factor`（默认 1.5）只是工程经验值，没有在甲方
+真实数据上留下任何证据；任务书要求的"单模型 ≤ 8 秒"也只有小样本手测。
+本轮我把这两件事一起做成可复现的实测：在甲方真实 STEP/STL 配对上跑一遍
+auto 阈值检测，记录阈值来源分量、区域结果和单对耗时，汇总成可审计文件。
+
+二、我新写和改了什么
+
+1. 新增 `scripts\calibrate_real_thresholds.py`（真实数据阈值标定与耗时实测）。
+   它按"一对一样本一个隔离子进程"的方式跑检测，避免单个大样本拖死批量任务；
+   支持 `--resume` 断点续跑、`--only` 抽样、`--max-stl-bytes` 资源保护、
+   `--reaggregate` 只重算汇总不重跑样本。
+   配对扫描、内存读取、输入指纹直接复用 `scripts\run_real_pair_stress.py`
+   里的实现，保证两套口径不会各说各话。
+2. 新增 `tests\test_real_threshold_calibration.py`（6 个测试）：配置必须落到
+   auto 模式、指纹随系数变化、汇总排除异常与跳过样本、汇总写出失败时保留旧文件、
+   worker 记录区域明细。
+3. 补齐 `configs\default.json` 和 `configs\smoke_1mm.json`：把
+   `threshold_mode`、`auto_threshold_scale_ratio`、`auto_threshold_residual_factor`、
+   `auto_threshold_floor_mm` 四个字段显式写进配置文件。
+   我特意把两个文件的 `threshold_mode` 都写成 `absolute`，保持历史正式输出
+   一字不变；只是让系数可被配置、可被审计，而不是偷偷改结果。
+
+三、真实数据标定结果
+
+样本范围：`data\provided\三维模型破损区域智能修补` 下全部 21 对
+（训练集 0-8 共 9 对、测试集 1-12 共 12 对）。
+我设的单对上限 240 秒、STL 体积保护 80 MiB，所以 `训练集\1.stl`
+（475,723,468 字节）被登记为 `resource_guard` 跳过，不占用时间预算。
+
+配置：`threshold_mode=auto`、`scale_ratio=0.002`、`residual_factor=1.5`、
+`floor_mm=0.02`、`max_query_points=20000`、`registration_mode=centroid`。
+结果文件：`outputs\real_threshold_calibration\summary.json`、
+`summary.csv`，schema 为 `real-threshold-calibration-1.0`。
+
+配对            状态           耗时(s)   包围盒对角线(mm)  配准平均残差(mm)  生效阈值(mm)  missing占比  extra占比  区域数
+测试集/1        timeout       240.029   -                -                 -            -          -         -
+测试集/2        review         48.330   13.45            0.292             0.4375       0          0         0
+测试集/3        timeout       240.027   -                -                 -            -          -         -
+测试集/4        review         64.079   23.31            0.430             0.6454       0          0         0
+测试集/5        timeout       240.026   -                -                 -            -          -         -
+测试集/6        review         21.826    7.23            0.150             0.2256       0          0         0
+测试集/7        review         57.796   13.33            0.270             0.4056       0          0         0
+测试集/8        timeout       240.021   -                -                 -            -          -         -
+测试集/9        review         22.990    6.81            0.124             0.1859       0          0         0
+测试集/10       timeout       240.019   -                -                 -            -          -         -
+测试集/11       timeout       240.025   -                -                 -            -          -         -
+测试集/12       timeout       240.037   -                -                 -            -          -         -
+训练集/0        review         69.206   26.57            0.504             0.7554       0          0         0
+训练集/1        resource_guard  0.000   -                -                 -            -          -         -
+训练集/2        timeout       240.021   -                -                 -            -          -         -
+训练集/3        review         41.596   26.57            0.391             0.5864       0          0         0
+训练集/4        review         37.533   23.49            0.378             0.5675       0.0010     0         0
+训练集/5        review        121.692   35.98            0.395             0.5920       0.0014     0         0
+训练集/6        timeout       240.019   -                -                 -            -          -         -
+训练集/7        review         92.919   19.36            0.617             0.9248       0.0742     0         0
+训练集/8        review          7.472    8.00            0.370             0.5551       0          0.0376    1
+
+汇总（只统计有真实耗时的 20 对，跳过的不计入）：
+1. 生效阈值最小 `0.1859 mm`、中位 `0.5675 mm`、最大 `0.9248 mm`；
+   默认配置里的 `0.150 mm` 比这 20 对的任何一个都低。
+2. 配准平均残差最小 `0.1239 mm`、中位 `0.3783 mm`、最大 `0.6165 mm`。
+3. 尺度分量 = 0.002 × 对角线，范围只有 `0.0136 ~ 0.0720 mm`；
+   噪声分量 = 1.5 × 残差，范围 `0.1859 ~ 0.9248 mm`。
+   20 对全部 `residual_dominates=true`，绝对下限 `0.02 mm` 一次都没有生效。
+
+四、我从标定结果读出来的结论
+
+1. 在这批真实数据上，阈值几乎完全由配准残差决定，尺度分量只有它的
+   1/8 到 1/20。也就是说 `auto_threshold_scale_ratio=0.002` 目前是一个
+   "写了但基本不参与"的系数。我没有为了让它好看而硬调大：在这批数据上
+   把 scale_ratio 提到能让尺度分量主导，阈值会跳到毫米级，反而会漏检真实破损。
+2. 想让尺度分量真正起作用，前提是把配准残差压下来（残差中位数 0.378 mm
+   对 6.8~36 mm 的零件来说偏大，`scale_too_coarse` 的判据是残差 > 5% 对角线）。
+   所以本轮我把 0.002 标成"未证实、需要更干净的配准数据才能标定"，
+   没有把它写成已定稿。
+3. 阈值从 0.150 mm 换成 auto 后，最典型的对照是 `训练集\8`：
+   阈值 `0.5551 mm`、只报 1 个 extra 区域、extra 占比 `0.0376`；
+   而此前 fixed 0.150 mm 会把几乎整件标成破损。这条证据支持"默认应走 auto"，
+   但我不在甲方不知情的情况下改默认值。
+4. 关于"检测准确率 ≥96%"：这批数据没有给标注真值（没有标注文件），
+   我无法算出准确率或漏检率。我只给出区域级观测，不把观测冒充准确率。
+
+五、单模型耗时实测
+
+1. 20 对有真实耗时的样本里，只有 `训练集\8` 达到任务书的 8 秒要求
+   （`7.472 s`），达标率 `1/20 = 5%`。
+2. 耗时中位 `107.3 s`、均值 `137.3 s`；有 9 对在 240 秒上限被截断
+   （测试集 1、3、5、8、10、11、12，训练集 2、6），也就是说这 9 对
+   真实耗时 ≥ 240 秒。
+3. 我拆过一次瓶颈（测试集 2 与 6，0.04 mm 线性偏差）：
+   - 测试集 2：STEP 三角化 `7.90 s`（参考面 97,947）、STL 读取 `3.81 s`
+     （待检面 160,552）；整对检测 48.33 s，剩余约 36 s 在配准与距离/区域生长。
+   - 测试集 6：STEP 三角化 `2.82 s`（参考面 26,216）、STL 读取 `0.62 s`
+     （待检面 22,164）；整对检测 21.83 s，剩余约 18 s 在配准与距离/区域生长。
+   结论：网格准备约占 1/4，检测主体约占 3/4，8 秒目标不是靠调参能达成的，
+   需要算法级优化（例如按模型尺度自适应三角化偏差、降低距离查询规模、
+   区域生长向量化）。本轮我只把瓶颈量化并写清楚，不假装已经达标。
+4. 另外我观察到同一样本两次运行的耗时并不稳定：`测试集\5` 第一次在
+   `176 s` 完成了检测并写出 `result.json`，第二次在同样配置下 240 秒未完成。
+   原因是本轮同时有另一条并发流程在跑同类 CAD 任务，CPU 争用明显。
+   所以我的耗时数字是"并发环境下的上界式测量"，不是空载基准。
+
+六、我在本轮发现并修掉的两个真实缺陷
+
+1. 我新写的标定脚本读取区域类型时用了不存在的字段 `region.damage_type`，
+   真实结构是 `RegionResult.defect_type`。这个缺陷只有在样本真的检出区域时
+   才会触发，`测试集\5` 第一次运行时以 `AttributeError` 暴露出来。
+   我改成 `defect_type`，并把每个区域的 `region_id`/`defect_type`/`area_mm2`/
+   `review_required` 记进 `region_detail`，同时补了一个用假结果对象驱动
+   `run_worker` 的回归测试，确保这类字段名错误以后会被测试拦住。
+2. 我的汇总函数把 `resource_guard` 跳过样本的 0 秒耗时算进了"8 秒达标"，
+   导致达标数一度显示为 2。我改成把 `exception` 和 `resource_guard`
+   都排除在耗时统计之外，并拆出 `measured_pair_count`/`skipped_pair_count`，
+   补了对应回归测试。修正后达标数是 1。
+
+七、我顺手做的 D 盘空间收口
+
+1. 删除项目根下一个误产生的文件 `$null`（149 字节，内容是一次失败命令的
+   报错重定向残留）。
+2. 删除 `reports\` 下 8 个一次性运行日志，合计 `37,245` 字节：
+   `audit_codex.log`、`pytest_full_latest.log`、`pytest_full_20261006.log`、
+   `pytest_codex_verify.log`、`pytest_after_split.log`、
+   `gate_final_20261006.log`、`bom_batch_run.log`（另有 `_pytest_diag.log`
+   在我动手前已不存在）。删除前我逐个确认这些文件名在 README、src、tests、
+   scripts、reports 里都没有被引用，它们只是可再生成的过程日志。
+3. 跑 `scripts\cleanup_project_caches.ps1`，项目字节码缓存目录归 0。
+4. 我确认没有删除 `data\raw`、`data\provided`、`.venv`、源码、测试、
+   正式 outputs 和任何 TXT 报告。
+5. 我新写的标定输出只有 `0.14 MB`（`outputs\real_threshold_calibration`
+   的 summary 加 21 个 worker 记录），属于"随时可删可重跑"的轻量证据，
+   不会把 D 盘堆起来。
+
+八、我执行的验证
+
+1. `python -B -m pytest -q -p no:cacheprovider tests\test_real_threshold_calibration.py`
+   → `6 passed`。
+2. `python -B scripts\calibrate_real_thresholds.py --reaggregate` 重算汇总
+   → 21 对、实测 20、跳过 1、8 秒达标 1、`within_8s_ratio=0.05`。
+3. 用 `--config configs\smoke_1mm.json` 跑通一次真实 CLI 检测
+   （合成立方体对照），确认新增字段能正常加载并生效：
+   `threshold_mm=0.15`、`threshold_mode=absolute`、`missing_region_count=1`。
+4. 标定脚本的 worker 记录已被 `reports\outputs_audit.json` 自动识别，
+   `schema_versions` 里出现 `real-threshold-calibration-1.0: 2`，
+   整体 `status=PASS`、`invalid_files=0`。
+
+九、我保留的限制（不写成已达成）
+
+1. 检测准确率 ≥96%、漏检率 ≤3%、修补成功率 ≥92%：甲方真实数据没有提供
+   标注真值，本轮无法计算，仍是未达成。
+2. 单模型 ≤8 秒：20 对实测只有 1 对达标（5%），未达成。
+3. 48 小时稳定性：未做。
+4. `auto_threshold_scale_ratio=0.002` 与 `auto_threshold_residual_factor=1.5`
+   本轮只做了"真实数据分布测量"，不是带真值的标定；结论是残差主导、
+   尺度分量基本不参与，系数需要更干净的配准数据才能定稿。
+5. 训练集 25 组、测试集 25 组：甲方实际只提供 9 对训练 + 12 对测试。
+
+十、交接关键词
+
+`scripts\calibrate_real_thresholds.py`、`tests\test_real_threshold_calibration.py`、
+`real-threshold-calibration-1.0`、`outputs\real_threshold_calibration\summary.json`、
+`auto_threshold_scale_ratio`、`auto_threshold_residual_factor`、
+`threshold_audit`、`residual_dominates`、`within_8s_ratio=0.05`、
+`训练集/8 7.472s`、`9 对 240 秒截断`、`region.defect_type`、
+`resource_guard 不计入达标`、`8 个一次性日志 37245 字节`、`$null 149 字节`。

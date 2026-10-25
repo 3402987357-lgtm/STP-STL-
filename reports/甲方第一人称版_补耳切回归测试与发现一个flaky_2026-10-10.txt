@@ -1,0 +1,87 @@
+我方给耳切改动补了回归测试，并发现一个不稳定测试
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我补了什么
+
+上一轮我改了 `_ear_clip_faces`（削耳顺序），按规矩新逻辑要留断言。
+我在 `tests\test_mesh_repair_nonconvex.py` 加了两个用例，**复用文件里
+已有的 `_l_prism_without_top()` L 形夹具**，没有新造测试数据：
+
+1. `test我方耳切把凹环三角化成n减二个三角形`
+   锁住**凹环一定要三角化出结果**这个契约：`_ear_clip_faces` 不许返回
+   None；三角形数必须正好是 n-2；三角形顶点只能来自环上原有顶点。
+
+2. `test我方耳朵质量分只排序不否决`
+   锁住我新加的 `_ear_quality` 语义：正三角形 = 1.0、三点共线（退化）
+   = 0.0。这个分只用来排序、不用来否决，所以量纲错了两道否决判据
+   看不出来，必须单独钉住。
+
+二、验证
+
+- 单文件：**6 passed**（4 原有 + 2 新增）。
+- 全量：**491 passed**（489 + 我新增的 2）。
+
+三、中途出现一次失败，我判定为 flaky（不稳定测试）
+
+第一次全量跑出现：
+
+    FAILED tests/test_step_repair_sampling.py::
+           test我方回读升级能把缝已合的Shell变成Solid
+    AssertionError: 我方应当写出结果
+    1 failed, 490 passed
+
+我没有放过它，去查了三轮：
+
+1. **单独跑这个用例 -> 1 passed。**
+2. 看它依赖什么：读真实件 `测试集/2.stp`、写到
+   `outputs/_probe/upgrade/repaired.step`。**不是我清理过的任何产物**
+   （我清理的都是 outputs/_t1x、_t4、_mesh_bench*、_mb*）。
+3. 查同文件里 6 处 `outputs/_probe` 用法，**子目录各不相同**
+   （already_sealed / valid_regression / invalid_input_healed /
+   nonplanar / tri_test / upgrade），**不存在路径互相覆盖**。
+4. **再跑一次全量 -> 491 passed，全绿。**
+
+所以它是**不稳定测试（flaky）**，不是我的改动造成的——我的改动在
+`mesh_hole`（网格耳切），而这个用例走 `repair_step_holes`（STEP 修补），
+两条路径不相干。
+
+四、这个 flaky 我没有根治（如实说明）
+
+我只证明了它**会自己恢复**（单独跑过、第二次全量过），**没有找出根因**。
+可能的原因我没查证：OCP 全局状态在测试间的残留、临时目录竞争、或
+资源/超时。
+
+风险应当让甲方知道：**这个用例可能偶发红**，在 CI 上会表现为"明明没
+改代码却红了"。
+
+五、我执行的验证
+
+- 单文件 pytest：6 passed。
+- 全量 pytest：第一次 490 passed + 1 failed；第二次 **491 passed**。
+- 失败用例单独重跑：1 passed。
+- 核对 6 处 `outputs/_probe` 路径，排除互相覆盖。
+
+六、当前权威状态
+
+- 任务书「修补成功率 ≥ 92%」：开启非凸后两组均 95.2%（合并 40/42 =
+  95.24%），达标；**默认配置 33.3%，不达标**。
+- 真实件封闭率（另一口径）：9/11 = 81.8%。
+- 测试：**491 passed**。
+
+七、我保留的限制
+
+1. **flaky 未根治**：`test我方回读升级能把缝已合的Shell变成Solid`
+   偶发失败，我只证明它会自己恢复，没找出根因。
+2. 我的新用例只在**合成的 L 形凹环**上验证，**没有覆盖"削到中途
+   自交"那个真实失败环**（它要加载真实 STL，用例会变慢）。所以我锁住
+   的是契约，不是那个具体回归场景。
+3. 默认配置仍 33.3% 不达标；平面误差超容差那条路径仍未修。
+4. 只跑了两组挖洞规模，更大的洞没测。
+5. `--allow-nonconvex` 是否可作为默认，待甲方定。
+6. `训练集/1` 四条路仍全失败。
+7. 顶层 SUCCESS 与区域级 MANUAL_REVIEW_REQUIRED 并存，我**没改**它。
+
+代码与测试位置：
+  `src\cad_inspector\repair\mesh_hole.py`（`_ear_clip_faces`、`_ear_quality`）
+  `tests\test_mesh_repair_nonconvex.py`（新增两个用例）

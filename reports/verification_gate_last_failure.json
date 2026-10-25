@@ -1,0 +1,96 @@
+{
+  "schema_version": "verification-gate-1.0",
+  "status": "FAIL",
+  "timestamp": "2026-10-17T20:13:29+08:00",
+  "root": "D:\\STP_STL_Missing_Region_Recognition",
+  "stages": [
+    {
+      "name": "bytecode_purge",
+      "ok": true,
+      "summary": "我已清理 10 个项目缓存目录。"
+    },
+    {
+      "name": "pytest",
+      "ok": false,
+      "returncode": 1,
+      "summary": "3 failed, 729 passed in 1010.56s (0:16:50)",
+      "failures": [
+        "FAILED tests/test_adaptive_threshold.py::test我方检测管线记录并应用阈值审计",
+        "FAILED tests/test_adaptive_threshold.py::test我方检测结果JSON带出阈值审计 - N...",
+        "FAILED tests/test_api_service.py::test我方任务最终能拿到检测结果 - AssertionE..."
+      ],
+      "command": "D:\\STP_STL_Missing_Region_Recognition\\.venv\\Scripts\\python.exe -B -m pytest -q -p no:cacheprovider D:\\STP_STL_Missing_Region_Recognition\\tests",
+      "output_tail": [
+        "** WorkSession : Sending all data",
+        "Step File Name : C:\\Users\\HUAWEI\\AppData\\Local\\Temp\\pytest-of-HUAWEI\\pytest-1975\\test我方三角化补面能补上非平面的洞0\\.repaired.step.qm9r_lio.tmp(76681 ents)  Write  Done",
+        "*******************************************************************",
+        "******        Statistics on Transfer (Write)                 ******",
+        "*******************************************************************",
+        "******        Transfer Mode = 0  I.E.  As Is       ******",
+        "******        Transferring Shape, ShapeType = 3                      ******",
+        "** WorkSession : Sending all data",
+        "Step File Name : C:\\Users\\HUAWEI\\AppData\\Local\\Temp\\._solid_probe_hgg9h7gr.step.b502qy2r.tmp(125290 ents)  Write  Done",
+        "*******************************************************************",
+        "******        Statistics on Transfer (Write)                 ******",
+        "*******************************************************************",
+        "******        Transfer Mode = 0  I.E.  As Is       ******",
+        "******        Transferring Shape, ShapeType = 2                      ******",
+        "** WorkSession : Sending all data",
+        "Step File Name : C:\\Users\\HUAWEI\\AppData\\Local\\Temp\\pytest-of-HUAWEI\\pytest-1975\\test我方回读升级能把缝已合的Shell变成Solid0\\.repaired.step.0f8tmxow.tmp(125270 ents)  Write  Done",
+        "*******************************************************************",
+        "******        Statistics on Transfer (Write)                 ******",
+        "*******************************************************************",
+        "******        Transfer Mode = 0  I.E.  As Is       ******",
+        "******        Transferring Shape, ShapeType = 2                      ******",
+        "** WorkSession : Sending all data",
+        "Step File Name : C:\\Users\\HUAWEI\\AppData\\Local\\Temp\\pytest-of-HUAWEI\\pytest-1975\\test我方真实盒体拓扑报告记录开放边和非流形边0\\box.step(350 ents)  Write  Done",
+        "*******************************************************************",
+        "******        Statistics on Transfer (Write)                 ******",
+        "*******************************************************************",
+        "******        Transfer Mode = 0  I.E.  As Is       ******",
+        "******        Transferring Shape, ShapeType = 2                      ******",
+        "** WorkSession : Sending all data",
+        "Step File Name : C:\\Users\\HUAWEI\\AppData\\Local\\Temp\\pytest-of-HUAWEI\\pytest-1975\\test我方OCP读取器把明确厘米STEP归一化到毫米0\\box.step(350 ents)  Write  Done"
+      ]
+    },
+    {
+      "name": "compileall",
+      "ok": true,
+      "returncode": 0,
+      "summary": "<无输出>",
+      "failures": [],
+      "command": "D:\\STP_STL_Missing_Region_Recognition\\.venv\\Scripts\\python.exe -B -m compileall -q src scripts tests"
+    },
+    {
+      "name": "pip_check",
+      "ok": true,
+      "returncode": 0,
+      "summary": "No broken requirements found.",
+      "failures": [],
+      "command": "D:\\STP_STL_Missing_Region_Recognition\\.venv\\Scripts\\python.exe -B -m pip check"
+    },
+    {
+      "name": "outputs_audit",
+      "ok": true,
+      "summary": "745/748 有效、0 损坏、3 跳过、status=PASS",
+      "report": "D:\\STP_STL_Missing_Region_Recognition\\reports\\outputs_audit.json"
+    },
+    {
+      "name": "cache_cleanup",
+      "ok": true,
+      "summary": "我收口时清理 22 个缓存目录，剩余 0 个。"
+    }
+  ],
+  "source_changed_during_run": true,
+  "comment_ratio": {
+    "target": 0.25,
+    "status": "PASS",
+    "total_lines": 42360,
+    "strict_comment_lines": 11141,
+    "line_ratio_strict": 0.263008,
+    "line_ratio_with_inline": 0.264046,
+    "docstring_coverage": 0.98164,
+    "module_docstring_coverage": 1.0
+  },
+  "report": "D:\\STP_STL_Missing_Region_Recognition\\reports\\verification_gate.json"
+}

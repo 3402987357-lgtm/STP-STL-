@@ -1,0 +1,29 @@
+{
+  "step": {
+    "extensions": [".step", ".stp"],
+    "recognized_by": "text_probe",
+    "geometry_backend_required": true,
+    "status": "phase_1_supported"
+  },
+  "parasolid_xt": {
+    "extensions": [".xt"],
+    "recognized_by": "extension_only",
+    "geometry_backend_required": true,
+    "licensed_adapter_required": true,
+    "status": "adapter_required"
+  },
+  "siemens_nx_prt": {
+    "extensions": [".prt"],
+    "recognized_by": "extension_only",
+    "geometry_backend_required": true,
+    "licensed_adapter_required": true,
+    "status": "adapter_required"
+  },
+  "stl": {
+    "extensions": [".stl"],
+    "recognized_by": "extension_only",
+    "geometry_backend_required": true,
+    "status": "not_in_phase_1"
+  }
+}
+

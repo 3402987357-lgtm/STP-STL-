@@ -1,0 +1,15 @@
+{
+  "reference_file": "D:\\STP_STL_Missing_Region_Recognition\\data\\synthetic\\reference_cube.stl",
+  "candidate_file": "D:\\STP_STL_Missing_Region_Recognition\\data\\synthetic\\candidate_cube_synthetic_missing.stl",
+  "removed_face_ids": [
+    2,
+    3
+  ],
+  "defect_center_xyz_mm": [
+    5.000000000000001,
+    5.000000000000001,
+    10.0
+  ],
+  "defect_area_mm2": 100.0,
+  "defect_type": "missing"
+}

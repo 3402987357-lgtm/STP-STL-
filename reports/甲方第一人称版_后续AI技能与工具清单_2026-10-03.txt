@@ -1,0 +1,368 @@
+我方后续 AI 技能与工具清单
+
+项目根目录：
+D:\STP_STL_Missing_Region_Recognition
+
+我方说明：
+以下技能是后续 AI 可以调用的工具入口，不代表本项目已经完成对应的工业验收。后续 AI 必须先读取 README、开发过程记录、完整报告和正式输出，再在 D 盘项目内继续工作。
+
+一、文档与交付物
+
+1. documents：Word、DOCX 创建、修改、渲染和版式核验。
+2. pdf：PDF 读取、生成、渲染、文本和表单检查。
+3. spreadsheets：XLSX、CSV、TSV 的表格、公式、格式和图表处理。
+4. presentations：PPTX、Google Slides 和演示文稿处理。
+5. template-creator：从参考文档、表格、演示或其他交付物生成模板技能。
+
+二、工程与可视化
+
+1. visualize：生成图表、模拟、地图和交互式可视化。
+2. imagegen：需要位图、示意图或界面素材时生成图像。
+3. computer-use：Windows 应用和浏览器的受控操作。
+4. tabbit：浏览器导航、网页检查和交互验证。
+
+三、OpenAI 与技能管理
+
+1. openai-docs：OpenAI/Codex 产品、API、模型、技能和自动化文档。
+2. skill-installer：按授权安装可用 Codex 技能。
+3. skill-creator：为甲方项目创建或更新可复用技能。
+4. pony-tail：最小必要代码实现、重复删除和过度工程审计。
+
+四、我方交给其他 AI 的固定提示词
+
+“请以甲方第一人称继续处理 D:\STP_STL_Missing_Region_Recognition。先读取 README、长计划、开发过程记录、完整报告、测试和正式输出；所有代码、测试、日志和报告继续写入 D 盘。先做区域级最小改动，再做定向极端测试、全量无缓存测试、真实样本烟囱验证和空间清理。不得删除原始 CAD、provided 数据、.venv 或正式输出，不得把 BASELINE、REVIEW_REQUIRED、UNRESOLVED 或开放壳体候选写成工业级通过。每次修改都要在 reports\开发过程记录_甲方第一人称版_2026-10-03.txt 追加第一人称记录。”
+
+五、后续关键词
+
+STEP B-Rep、OCP、Face、Edge、Wire、Shell、Solid、区域覆盖、
+horizontal_other、区域类别候选、邻接过渡、实体内外语义、孔壁代理、
+拓扑质量门禁、Face 映射、missing-region-detection-1.2、
+step-engineering-features-1.5、step-topology-1.1、人工复核、
+XT/PRT 授权、真实标注集、性能基准、Windows 10/11、本地离线、
+不得把 BASELINE 写成工业通过。
+
+六、我方固定验收要求
+
+1. 先确认当前工作目录和所有输出位于 D 盘项目。
+2. 不覆盖原始 CAD、原始 STL、provided 数据或既有正式输出。
+3. 每次代码改动后执行定向极端测试。
+4. 每轮收尾执行全量无缓存 pytest、compileall 和 pip check。
+5. 对 BOTTLE 和 mould_04 保留真实状态、告警和人工复核边界。
+6. 删除前只允许删除已确认可再生缓存和临时重复输出。
+7. 不虚报准确率、召回率、性能、XT/PRT、GUI、安装包、G0/G1/G2 或生产验收。
+
+===== 2026-10-03 最终工具使用和交接补充 =====
+
+一、我方本轮实际使用
+
+1. PowerShell：检查 D 盘工程、正式文件、JSON/CSV、进程和空间。
+2. pytest：当前源码最终无缓存全量回归 144 passed。
+3. compileall：源码、测试和脚本编译检查通过。
+4. pip check：依赖检查返回 No broken requirements found。
+5. OCP/STEP 工程模块：生成并核验 BOTTLE/mould_04 工程特征、区域、拓扑和几何签名。
+6. JSON/CSV 结构化审计：116 个 JSON、51 个 CSV 可读，没有 NaN、Infinity 或 -Infinity。
+7. 项目内安全清理：只删除 12 个可再生 __pycache__，最终 __pycache__ 和 .pytest_cache 为 0。
+
+二、我方新增交接关键词
+
+几何签名、face_geometry_signatures、稳定 CAD ID、跨 CAD 拓扑映射、区域 Face 覆盖审计、
+step-engineering-features-1.5、BASELINE、REVIEW_REQUIRED、原始 Shape 无效、资源保护、
+人工复核、144 passed、D 盘空间清理、XT/PRT、最终分型面、G0/G1/G2。
+
+三、我方交接边界
+
+我方确认技能清单只提供后续 AI 的工具入口、提示词和验收规则，不代表已经下载或安装所有技能，也不代表 XT/PRT、GUI、准确率、性能或工业最终验收已经完成。后续 AI 必须先读取全部 TXT 报告，再按 D 盘工程内的现有工具和限制继续工作。
+
+===== 2026-10-03 区域复核队列交接补充 =====
+我方新增可交接字段和关键词：
+`review_reason_codes`、`review_priority`、`review_reason_counts`、`review_priority_counts`、
+`SHAPE_INVALID`、`SEMANTICS_UNRESOLVED`、`RESOURCE_GUARD`、`BOUNDARY_EDGES_PRESENT`、
+`MISSING_NEIGHBOR_REGION`、`MULTI_CANDIDATE_KINDS`、`NO_ENGINEERING_CANDIDATE`、
+`MIXED_SURFACE_TYPES`、`CATEGORY_MISSING`、`CATEGORY_LOW_CONFIDENCE`、
+`CATEGORY_AMBIGUOUS`、`step-engineering-features-1.6`。
+后续 AI 处理区域时，必须先按 `review_priority` 排序，再读取 `review_reason_codes`、
+Face/Edge/邻接证据和人工标注；不能只按类别置信度自动下结论。
+
+===== 2026-10-03 区域边界 Edge 交接补充 =====
+
+我方新增交接字段：`boundary_edge_ids`、`boundary_edge_count`、区域工程
+`evidence.boundary_edge_ids` 和区域 CSV 字段“边界Edge编号”。当前工程特征 schema 为
+`step-engineering-features-1.7`。
+
+后续 AI 使用这些字段时，必须遵守：只把至少连接一个当前区域 Face、且并非所有相邻
+Face 都属于当前区域的 Edge 当作区域边界；编号仅在当前 STEP 文件和当前报告内稳定，
+不能当作跨 CAD 永久拓扑 ID。继续工作时仍须执行区域定向测试、全量无缓存回归、
+真实样本烟囱验证、正式输出审计和可再生缓存清理。
+
+===== 2026-10-03 当前交接终态 =====
+
+我方当前交接基线为：工程 schema `step-engineering-features-1.8`；阶段 3 schema 为
+`step-feature-classification-1.4`；BOTTLE 为
+`BASELINE`，311 Face、444 候选、141 区域；mould_04 为 `REVIEW_REQUIRED`，
+4974 Face、9290 候选、1393 区域。两轮连续全量回归均为 `166 passed`，正式输出审计
+通过，项目缓存和项目 Python 进程为 0。
+
+我方新增关键词：`boundary_edge_ids`、区域边界 Edge、区域几何签名、
+`region_geometry_signature`、Face-Edge 区域追踪、`step-engineering-features-1.8`、
+`step-feature-classification-1.4`、`166 passed`、重复正式输出清理、D 盘空间保护。
+后续 AI 仍必须先读取全部 TXT 报告，不能把边界编号当作永久 CAD ID，也不能把
+`REVIEW_REQUIRED` 写成成功。
+
+===== 2026-10-03 附件和用户请求区分关键词 =====
+
+我方交接时把“514.docx 原始任务书/验收目标”和“本轮用户执行要求/TXT记录/D盘清理”
+分开理解。后续 AI 还应读取：80%分型线正确率、80%分型面正确率、5分钟单文件、20组
+训练集、20组测试集、STP214、XT、IGS、STP、Windows 10/11、本地离线、原始文件只读、
+代码注释率、`144.rar` 只读清单、`144.rar.wxdownload` 路径不存在。任何关键词都不能
+替代实际测试和正式验收。
+
+===== 2026-10-03 STEP 修补交接补充 =====
+
+我方新增交接关键词：`step-repair-1.1`、`repair_attempt_count`、
+`repair_success_count`、`repair_success_rate`、`continuity_verified`、
+`continuity_summary`、`G0_CANDIDATE`、`G1_NOT_VERIFIED`、`G2_NOT_VERIFIED`、
+`deviation_max_mm`、`deviation_mean_mm`、`NOT_AVAILABLE_NO_REFERENCE_SURFACE`、
+`ocp_planar_boundary_face`、开放边质量门禁、非流形边质量门禁、Solid 数量门禁、
+STEP JSON/CSV 原子输出、BOTTLE 71 开放环/12 候选、mould_04 120 开放环/0 候选。
+
+后续 AI 必须把 `CANDIDATE`、`REVIEW_REQUIRED`、`BASELINE`、`UNRESOLVED` 和
+`NOT_VERIFIED` 当作证据状态，不得自动改写为“修复成功”。只有在提供参考曲面、
+完成偏差计算、连续性计算、Shape 有效性、开放边、非流形边和 Solid 数量门禁后，
+才可以进入下一阶段的工程验收。
+
+===== 2026-10-03 区域签名交接规则 =====
+
+我方新增区域签名字段后，后续 AI 只能把 `region_geometry_signature` 当作候选追踪
+证据。签名不包含 Face ID、Edge ID 或 `region_id`，但仍可能因重复几何、单位变化、
+模型重建、拓扑重排和形变发生碰撞或失配。后续实现必须同时保留 Face/Edge/Wire
+原始编号、签名碰撞统计、人工复核状态和输入文件指纹。
+
+===== 2026-10-03 后续 AI 交接终态：schema 1.9 =====
+
+我方当前交接版本以工程 schema `step-engineering-features-1.9` 为准。后续 AI 读取工程
+区域时，必须同时读取以下字段：
+
+`region_geometry_signature`、`boundary_edge_ids`、`review_reason_codes`、
+`review_priority`、`parting_role_candidates`、`parting_confidence`、
+`parting_review_required`、`parting_evidence`。
+
+分型证据方法为 `region_role_boundary_neighbor_parting_rules`。可使用的分型候选关键词为：
+`PARTING_SURFACE_REGION_CANDIDATE`、`PARTING_PROFILE_REGION_CANDIDATE`、
+`PARTING_BOUNDARY_EDGE_REGION_CANDIDATE`、`PARTING_PROFILE_EDGE_CANDIDATE`、
+`PARTING_STEP_BRIDGE_REVIEW_CANDIDATE`、`PARTING_R_CORNER_REVIEW_CANDIDATE` 和
+`UNRESOLVED_PARTING_REGION_CANDIDATE`；分型复核原因包括
+`PARTING_REGION_AMBIGUOUS`。
+
+后续 AI 不得把这些候选、区域编号、Face 编号或 Edge 编号当作跨 CAD 永久 ID，也不得把
+`BASELINE`、`CANDIDATE` 或 `REVIEW_REQUIRED` 改写成最终工业结论。继续开发前仍必须先
+运行无缓存测试、结构化 JSON/CSV 审计、真实样本烟囱验证和缓存清理。
+
+===== 2026-10-03 本轮后续 AI 交接关键词校正 =====
+
+我方新增交接关键词：
+`step-engineering-features-1.9`、`parting_role_candidates`、
+`parting_confidence`、`parting_review_required`、`parting_evidence`、
+`PARTING_REGION_AMBIGUOUS`、区域分型角色、分型区域复核、30 列区域 CSV、
+`step-repair-1.2`、`G0_VERIFIED`、`continuity_verified`、`170 passed`、
+`artifact-audit-1.0`、29/29 有效、236651 字节清理。
+
+我方要求后续 AI 先读取两套正式工程 JSON 和区域 CSV，再按
+`review_priority`、`review_reason_codes`、`parting_review_required` 排队；不能把
+分型角色候选当作最终分型线或分型面，不能把几何签名和 Edge 编号当作跨 CAD 永久 ID。
+当前可使用的本地工具仍包括 PowerShell、`.venv` Python、pytest、compileall、pip check、
+OCP/OCCT、JSON/CSV 审计和受保护清理脚本；本轮没有下载或安装未经验证的新技能。
+
+===== 2026-10-03 G2 审计和真实附件交接补充 =====
+
+我方新增后续 AI 关键词：
+`step-repair-1.3`、`max_g2_curvature_delta_per_mm`、
+`g2_max_curvature_delta_per_mm`、`G2_VERIFIED`、`G2_NOT_SATISFIED`、
+`法向曲率量差`、`曲面D2导数`、`边界切向曲率`、`171 passed`、
+`88.docx`、`888.rar`、`25组训练集`、`25组测试集`、`96%检测准确率`、
+`92%修补成功率`、`8秒单模型`、`48小时稳定性`。
+
+后续 AI 必须区分：
+
+1. `D:\桌面\88.docx` 是本轮真实业务任务书，要求 STL/STP 解析、孔洞/缺面/
+   边界断裂/非连续曲面/拓扑破损检测、曲面插值、NURBS、Wire 重构、G0/G1/G2、
+   JSON 评估、可视化对比和局部修补。
+2. 88.docx 中的 96%、92%、8 秒、48 小时以及 25+25 组数据是验收目标，不能
+   在没有真实标注集、性能日志和稳定性长跑证据时写成已完成。
+3. `D:\桌面\888.rar` 只读存在；项目中保留此前已经生成的 `data\provided` 样例数据，
+   本轮没有重新复制或解压。当前环境没有 RAR 列表或解压后端，后续如需独立读取，
+   先提供合规的本地 RAR 工具并再次核对空间。
+4. 用户消息定义 D 盘执行、甲方第一人称 TXT、逐轮记录、极端测试和安全清理；
+   用户执行要求不替代 88.docx 的技术验收指标。
+
+本轮交接真实状态：BOTTLE 的 12 个 STEP 平面补面候选全部通过 G0/G1/G2 采样，
+但整体仍因开放边、非流形边和 Solid 门禁为 `REVIEW_REQUIRED`；mould_04 仍为无效
+Shape、0 个候选。后续 AI 不得把局部 G2 采样通过写成整件模型修补完成。
+
+===== 2026-10-03 非平面曲面候选交接补充 =====
+
+我方新增关键词：
+`allow_nonplanar_surface_candidate`、`--allow-nonplanar-surface-candidate`、
+`ocp_surface_filling_candidate`、`BRepOffsetAPI_MakeFilling`、`C0 boundary constraint`、
+`非平面闭合Wire`、`曲面填充候选`、`18 passed`、`179 passed`。
+
+后续 AI 使用该开关时必须遵守：
+
+1. 默认关闭，避免未经确认的曲面候选改变正式输出。
+2. 候选只针对闭合且不满足平面门禁的 Wire；开放 Wire、有限性失败和无相邻 Face
+   仍直接进入人工复核。
+3. 非平面候选区域必须保留 `review_required`，任何人工复核标记都阻止自动写正式
+   修复 STEP。
+4. `ocp_surface_filling_candidate` 不是 NURBS 重建完成、完整 Wire 重构完成或
+   工业 G1/G2 通过；必须继续读取曲率、Shape、开放边、非流形边和 Solid 证据。
+
+===== 2026-10-03 当前点名附件交接校正 =====
+
+后续 AI 必须优先读取当前点名的
+`D:\桌面\2878f9d0-30c3-43fc-b661-17d51f4b99f6.docx` 和
+`D:\桌面\915551d3-9d27-4671-80a0-c88b49071839.rar`，再读取本项目 TXT。
+DOCX 的业务主线是模具装配体识别、分类、测量和 BOM，不是历史 `88.docx` 的 STL/STP
+缺失修补主线；`88.docx`、`888.rar`、`777.docx`、`514.docx` 只能作为历史记录。
+
+本轮可交接关键词：
+`mold-bom-1.5`、`OCP_XCAF_STEPCAFControl`、`STEP/STP assembly`、`STP214`、
+`XT_ADAPTER_REQUIRED`、`occurrence_path`、`reference_shape_id`、`quantity`、
+`dimensions_xyz_mm`、`material_source`、`purchase_specification_source`、
+`Excel XLSX`、`UTF-8 CSV`、`99% accuracy`、`1%漏检率`、`3分钟`、
+`Windows 10/11`、`local-only`、`授权 Parasolid adapter`。
+
+后续 AI 不得宣称 XT 已原生支持、BOTTLE 的 2 个组件代表完整验收集、或当前已经达到
+99%/1%/3 分钟。RAR 只能确认文件存在；当前环境没有可用 RAR 列表/解压后端，不能
+把 `data\provided` 或历史样例冒充为该 RAR 已核验内容。缺少甲方标注集、版本矩阵、
+XT 适配器和性能环境时，所有结论都必须保留人工复核和未验收状态。
+
+===== 2026-10-04 交接新增关键词与工具要求 =====
+
+我方新增的后续 AI 关键词为：
+
+`step-feature-classification-1.6`
+`step-engineering-features-2.1`
+`primary_boundary_edge_ids`
+`boundary_wire_candidate_count`
+`boundary_wire_selection_status`
+`boundary_wire_selection_evidence`
+`closed_wire_max_edge_count`
+`BOUNDARY_WIRE_AMBIGUOUS`
+`PARTING_PRIMARY_BOUNDARY_WIRE_CANDIDATE`
+`39列区域CSV`
+`185 passed`
+
+我方建议后续 AI 继续使用现有 Python 3.12、OCP、NumPy、pytest、PowerShell、CSV/JSON
+标准库和当前项目的 `artifact_audit`，不新增库来完成已经能由现有依赖解决的工作。后续
+若要把最大 Wire 从 Edge 数启发式升级为真实外环识别，我要求使用 OCP 的 Edge 几何
+长度、Wire 有向顺序、平面投影面积和孔洞关系，并在每个判断后保留
+`REVIEW_REQUIRED` 证据。
+
+我方禁止后续 AI 直接宣称：最大 Edge 数就是外轮廓、区域签名是永久 CAD ID、BOTTLE
+或 mould_04 已完成最终分型、真实准确率已达标、XT/PRT 已原生支持，或没有标注集时
+已经完成工业验收。
+
+===== 2026-10-06 后续 AI 交接新增：BOM 交付物保护 =====
+
+后续 AI 必须保留以下正式文件，不得加入可再生清理目标：
+
+`outputs\bom_bottle\BOTTLE.bom.json`、`outputs\bom_bottle\BOTTLE.bom.csv`、
+`outputs\bom_bottle\BOTTLE.bom.xlsx`、
+`outputs\step_engineering\BOTTLE\BOTTLE.engineering.json`、
+`outputs\step_engineering\mould_04\mould_04.engineering.json`。
+
+本轮关键词：`test_cleanup_policy.py`、`mold-bom-1.5`、`BOM XLSX protection`、
+`30/30 artifact audit`、`185 passed`、`cleanup target 0`、`178.94 GiB free`。
+清理脚本必须先验证正式文件存在，再删除白名单目标；不能为了节省空间删除 Excel
+交付物。当前 BOM 是 STEP/STP 基线，XT 仍需授权适配器和独立验收。
+
+===== 2026-10-06 后续 AI 交接：训练门禁、输出契约与最新 schema =====
+
+后续 AI 继续工作前必须执行：
+
+1. `.\.venv\Scripts\python.exe -B run_inspector.py validate-annotations <manifest.json>`
+   校验 `missing-region-annotations-1.0`；必须有 `train` 和 `test`，同一个参考或候选
+   CAD 文件不能跨 split 重复，包围盒必须成对且坐标有序。
+2. `.\.venv\Scripts\python.exe -B run_inspector.py audit outputs`
+   校验 JSON、CSV、XLSX、PLY、STL；重复 JSON 键、短行/长行 CSV 和只有未知文件的
+   目录必须保持 `REVIEW_REQUIRED`。
+3. 读取正式 schema `step-feature-classification-1.7`、
+   `step-engineering-features-2.2`；当前工程区域 CSV 为 41 列，并含
+   `boundary_perimeter_length_mm` 和 `primary_boundary_perimeter_length_mm`。
+
+本轮关键词：`validate-annotations`、`missing-region-annotations-1.0`、
+`single-file split leakage`、`bbox order gate`、`duplicate JSON key`、
+`ragged CSV`、`step-feature-classification-1.7`、
+`step-engineering-features-2.2`、`41列区域CSV`、`196 passed`、`30/30 PASS`。
+
+这些门禁只能证明数据和输出的可审计性，不能替代甲方真实标注准确率、XT/PRT 授权
+适配器、最终封闭实体、工业连续性、性能、GUI、安装包和生产验收。
+ 
+===== 2026-10-06 后续 AI 交接：周长优先 Wire 选择与最新验收口径 =====
+
+后续 AI 必须优先读取以下关键词：
+
+`step-feature-classification-1.7`
+`step-engineering-features-2.2`
+`boundary_perimeter_length_mm`
+`primary_boundary_perimeter_length_mm`
+`perimeter_missing_edge_ids`
+`perimeter_conflict_edge_ids`
+`edge_count_fallback`
+`41列区域CSV`
+`196 passed`
+`30/30 artifact audit`
+
+后续 Wire/分型实现必须遵守：有限且无冲突的 Edge 长度优先；长度缺失、冲突、开放
+分量、端点未解析或平局时保留 `REVIEW_REQUIRED` 和回退原因；Edge 编号不是跨 CAD
+永久 ID，也不等于最终分型线。继续使用现有 OCP、NumPy、pytest、PowerShell、
+JSON/CSV 标准库和 `run_inspector.py`，不要为已能完成的工作新增大型依赖。
+
+清理 D 盘时不得删除 `data\raw`、`data\provided`、`.venv`、源码、测试、TXT 报告、
+BOM JSON/CSV/XLSX 或两套正式工程 JSON/CSV。当前 BOTTLE 为 `BASELINE`，mould_04
+为 `REVIEW_REQUIRED`；测试和审计通过不代表 XT 原生支持、99%/1%/3 分钟验收或工业
+最终交付已经完成。
+
+===== 2026-10-06 后续 AI 交接：BOM 区域类别决策层 =====
+
+后续 AI 必须读取当前 BOM schema `mold-bom-1.6`，并遵守以下字段语义：
+
+`category_candidates`（多候选列表，含 category/confidence/sources/evidence）
+`category_review_required`（未由主数据确认时必须为 true）
+`category_review_reason_codes`（`NAME_RULE_ONLY`、`NAME_GEOMETRY_AGREEMENT`、
+`GEOMETRY_ONLY`、`MULTIPLE_CATEGORY_CANDIDATES`、`SEMANTICS_UNRESOLVED`、
+`NO_SOLID_GEOMETRY`、`MISSING_BOUNDING_BOX`、`MASTER_DATA_CONFIRMED`）
+
+后续实现分类时应遵守：名称和几何都只是候选证据；只有精确 BOM 主数据匹配才能写入
+`MASTER_DATA_CONFIRMED` 并关闭复核；无 Solid 或缺少包围盒时必须保持 `未确定`，
+不得用外观或颜色猜测材料和采购规格。
+
+当前正式 schema 为 `mold-bom-1.6`、`step-engineering-features-2.3`、
+`step-feature-classification-1.8`；本轮全量 `209 passed`、`audit outputs`
+`30/30` PASS。清理脚本已覆盖 `stage3_regions_v3\*_regeneration.log` 和
+`step_engineering\_regeneration.log`，不得把 BOM JSON/CSV/XLSX 加入删除目标。
+
+===== 2026-10-06 主边界 Wire 投影面积交叉校验与清理终检索引 =====
+
+我方本轮只使用现有 Python、OCP、NumPy、pytest、PowerShell、JSON/CSV 标准库，
+没有为投影面积校验新增外部 Skill 或大型依赖。阶段 3/工程 schema 为
+`step-feature-classification-1.8` 和 `step-engineering-features-2.3`，工程区域
+CSV 为 44 列，全量测试 `209 passed`，outputs audit `30/30 PASS`。
+
+详细记录见 `reports\甲方第一人称版_主边界Wire投影面积校验与清理终检_2026-10-06.txt`。
+
+===== 2026-10-06 边界环层级与 CSV 上限收口索引 =====
+
+我方本轮完成闭合环层级、孔洞候选、相交环冲突、47 列区域 CSV 和 CSV 单元格上限修复。
+阶段 3/工程 schema 为 `step-feature-classification-1.9` 和
+`step-engineering-features-2.4`，全量测试 `225 passed`，outputs audit `30/30 PASS`。
+
+详细记录见 `reports\甲方第一人称版_边界环层级与CSV上限收口_2026-10-06.txt`。
+
+===== 2026-10-06 D 盘空间收口与无用文件排查索引 =====
+
+我方本轮按甲方要求做 D 盘空间收口：复核白名单清理脚本，确认可再生成输出命中 0 项、
+项目缓存目录 0，并用统一门禁清理 40 个字节码缓存。项目本体合计约 2,174.73 MiB，
+其中 data 1,351.56 MiB、.venv 688.85 MiB、outputs 132.63 MiB，均为受保护内容。
+桌面 rar 压缩包因本机缺少解压工具未核对，仅登记不删。D 盘可用约 178.44 GiB。
+
+详细记录见 `reports\甲方第一人称版_D盘空间收口与无用文件排查_2026-10-06.txt`。

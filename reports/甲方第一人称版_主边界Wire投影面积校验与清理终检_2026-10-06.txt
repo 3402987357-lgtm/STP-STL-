@@ -1,0 +1,94 @@
+我方第一人称版主边界 Wire 投影面积校验与清理终检
+记录日期：2026-10-06
+
+一、本轮目标
+
+我方继续按区域推进，不把“边界周长最大”直接当成最终外轮廓。本轮我新增真实
+Vertex 坐标导出、闭合边界有序回路、二维投影多边形面积和平面性证据，用投影面积
+与周长选择做交叉校验；当周长最大候选和投影面积最大候选不是同一条 Wire 时，我
+保留冲突并要求人工复核。
+
+二、本轮实现
+
+1. `src\cad_inspector\io\step_faces.py`
+   - 新增 `vertex_coordinates_mm`，从当前 STEP 文件的 Vertex 读取有限三维坐标。
+   - Face 报告 schema 从 `step-face-features-1.6` 升到 `1.7`。
+2. `src\cad_inspector\domain\step_features.py`
+   - 新增 `primary_boundary_projected_area_mm2`、
+     `primary_boundary_projection_status`、
+     `primary_boundary_projection_evidence`。
+   - 阶段 3 schema 从 `step-feature-classification-1.7` 升到 `1.8`。
+3. `src\cad_inspector\detection\step_features.py`
+   - 新增 `_wire_projection_evidence`、`_ordered_loop_vertex_ids`、
+     `_polygon_area_mm2`。
+   - 对闭合分量按共享 Vertex 排序，使用 SVD 拟合投影平面，再按鞋带公式计算
+     二维投影面积；弧段仍按弦近似，不把它写成 NURBS 精确面积。
+   - 稳定状态包括 `COMPUTED`、`NOT_CLOSED`、`MISSING_VERTEX_COORDINATES`、
+     `UNORDERED_COMPONENT`、`INSUFFICIENT_POINTS`、`PROJECTION_FAILED`、
+     `DEGENERATE_POINTS`、`DEGENERATE`、`NON_PLANAR_CANDIDATE`。
+   - Wire 选择新增 `PROJECTED_AREA_CONFLICT`，并把冲突标志、最大面积分量索引和
+     最大投影面积写入证据。
+4. `src\cad_inspector\domain\step_engineering.py`
+   - 工程区域同步新增三个投影字段，schema 从
+     `step-engineering-features-2.2` 升到 `2.3`。
+5. `src\cad_inspector\detection\step_engineering.py`
+   - 新增复核原因 `BOUNDARY_PROJECTION_CONFLICT`，优先级为 `MEDIUM`。
+6. `src\cad_inspector\output\step_engineering_report.py`
+   - 工程区域 CSV 从 41 列升到 44 列，新增：
+     `主边界Wire投影面积_mm2`、`主边界Wire投影状态`、
+     `主边界Wire投影证据`。
+
+三、正式输出与当前数据
+
+1. BOTTLE
+   - 阶段 3：`step-feature-classification-1.8`、`BASELINE`、311 Face、141 区域。
+   - 工程：`step-engineering-features-2.3`、444 候选、141 区域、44 列区域 CSV。
+   - 投影状态：75 个 `COMPUTED`、14 个 `NON_PLANAR_CANDIDATE`、
+     1 个 `INSUFFICIENT_POINTS`、51 个 `UNAVAILABLE`。
+   - 周长与投影面积冲突 0 个。
+2. mould_04
+   - 阶段 3：`step-feature-classification-1.8`、`REVIEW_REQUIRED`、4974 Face、
+     1393 区域。
+   - 工程：`step-engineering-features-2.3`、9290 候选、1393 区域、44 列区域 CSV。
+   - 投影状态：474 个 `COMPUTED`、222 个 `NON_PLANAR_CANDIDATE`、
+     669 个 `INSUFFICIENT_POINTS`、1 个 `DEGENERATE`、27 个 `UNAVAILABLE`。
+   - 周长与投影面积冲突 53 个，全部写入 `BOUNDARY_PROJECTION_CONFLICT`。
+3. 两份正式 JSON 和 CSV 已重新生成，没有保留旧 schema 文件。
+
+四、我方验证
+
+1. 定向区域、工程、OCP Face 和正式输出契约：`39 passed in 2.75s`。
+2. 全量无缓存 pytest 多轮复跑：`209 passed`；最后一轮为
+   `209 passed in 64.62s`。
+3. `compileall` 退出码 0；`pip check` 返回 `No broken requirements found`。
+4. 极端分支测试覆盖：未闭合、非平面、缺失坐标、无序回路、周长与面积冲突。
+5. 正式 outputs 审计：`30/30 VALID`、0 损坏、0 跳过、`PASS`。
+6. 清理可再生成日志释放 `65,481,405` 字节；项目缓存目录为 0。
+7. 我方清理后 outputs 约 `102.90 MiB`；后续外部只读校验期间 Face 报告被其他
+   进程重建，当前只读快照约 `119.23 MiB`，D 盘剩余约 `178.89 GiB`。
+
+五、清理边界
+
+我方只删除了三份可再生成的 `_regeneration.log` 和项目缓存目录。`data\raw`、
+`data\provided`、`.venv`、源码、测试、BOM JSON/CSV/XLSX、两套正式工程
+JSON/CSV 和全部 TXT 报告均保留。
+
+六、剩余限制
+
+投影面积是当前文件内的弦近似二维面积，不是最终外轮廓、NURBS 精确面积、孔洞
+布尔关系或封闭分型面。Vertex、Edge、Wire 编号都不是跨 CAD 永久 ID。我方仍未
+完成 XT/PRT 原生适配、甲方标注集准确率、99%/1%/3 分钟性能、工业 G0/G1/G2、
+GUI、安装包和生产验收。
+
+七、交接关键词
+
+`step-face-features-1.7`、`step-feature-classification-1.8`、
+`step-engineering-features-2.3`、`vertex_coordinates_mm`、
+`primary_boundary_projected_area_mm2`、`primary_boundary_projection_status`、
+`primary_boundary_projection_evidence`、`PROJECTED_AREA_CONFLICT`、
+`BOUNDARY_PROJECTION_CONFLICT`、`44列区域CSV`、`209 passed`。
+
+后续更新：本报告记录的是 1.8/2.3 和 44 列 CSV 的历史阶段。我方随后完成
+边界环层级与 CSV 上限收口，当前为 `step-feature-classification-1.9`、
+`step-engineering-features-2.4`、47 列区域 CSV、全量 `225 passed`。
+最新记录见 `reports\甲方第一人称版_边界环层级与CSV上限收口_2026-10-06.txt`。

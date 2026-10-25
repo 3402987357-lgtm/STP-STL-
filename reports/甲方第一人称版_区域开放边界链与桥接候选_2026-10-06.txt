@@ -1,0 +1,131 @@
+甲方第一人称版：区域开放边界链与桥接候选（2026-10-06）
+================================================================
+
+我以甲方第一人称记录本轮区域实现工作。上一轮我把“只被一个 Face 引用的自由边”
+修回区域边界后，BOTTLE 还有 21 个、mould_04 还有 96 个区域的状态是
+`OPEN_BOUNDARY_CANDIDATE`。本轮我针对这些开放区域，把“缺口在哪里、该连哪两个点”
+做成可审计的证据，而不是只给一个笼统的“开放边界”结论。
+
+
+一、本轮要解决的问题
+----------------------------------------------------------------
+
+上一轮之后，开放区域只知道“边界没闭合”，但不知道：
+
+1. 这条开放边界由几段链组成；
+2. 每条链的两个端点是谁；
+3. 缺口有多宽、应该把哪两个端点接起来。
+
+计划书阶段 5 的要求是“台阶、缺口、R 角和分型线桥接”。桥接的前提就是先拿到
+这些链和端点，所以本轮我把它们补进阶段 3 的区域边界证据里。
+
+
+二、我做的实现
+----------------------------------------------------------------
+
+我在 `src\cad_inspector\detection\step_features.py` 新增两个函数，并接进
+`_boundary_topology_evidence`：
+
+1. `_open_boundary_chains(component, edge_vertices, edge_lengths_mm)`
+   我把一个开放边界分量按共享 Vertex 拆成链：从度 1 端点出发一直走到另一个
+   度 1 端点，记下 `edge_ids`、`start_vertex_id`、`end_vertex_id`、`length_mm`；
+   走完开放链后剩余的边收成“残余闭环”，标 `closed=true`，不静默丢弃。
+
+2. `_bridge_proposals(open_endpoint_vertex_ids, vertex_coordinates_mm)`
+   我按最近端点配对给出台阶/缺口桥接候选，每条候选带
+   `from_vertex_id`、`to_vertex_id`、`gap_distance_mm`、`applied=false`、
+   `method=nearest_open_endpoint_pairing`；落单的端点也会带 `unmatched=true` 输出。
+
+我把这些字段写进区域边界证据：
+
+    每个连通分量新增：open_endpoint_vertex_ids、open_chains
+    区域级新增：open_endpoint_vertex_ids、open_chain_count、
+                bridge_required、bridge_proposals
+    无边界区域：同样带空值，保证字段齐全
+
+我按项目既有约定处理 schema：这些是嵌套的可选证据字段，不改变区域顶层字段表，
+所以我没有改 `step-feature-classification-1.10`，只让内容更完整。
+
+
+三、我刻意保留的简化（写明上限）
+----------------------------------------------------------------
+
+`_bridge_proposals` 用的是“最近端点贪心配对”，不是全局最小权完美匹配。
+我在代码里写了 `ponytail:` 注释说明原因：全局最小权会把同一条链的两个端点
+互相连上、把链自己闭成退化小环，反而不是工程上要的“把缺口两侧接起来”。
+贪心只用于候选排序，全部 `applied=false` 交人工确认；等有真实标注再换成链序 TSP 配对。
+
+
+四、真实数据结果（重生成四套正式输出）
+----------------------------------------------------------------
+
+我用新代码重生成四套正式输出：
+
+1. `outputs\stage3_regions_v3\BOTTLE_step_regions_v3.json`
+2. `outputs\step_engineering\BOTTLE\*`
+3. `outputs\stage3_regions_v3\mould_04_step_regions_v3.json`
+4. `outputs\step_engineering\mould_04\*`
+
+BOTTLE（141 个区域）：
+
+    带桥接候选的区域        21 个
+    桥接候选总数            24 条（全部成对，无落单）
+    缺口距离                全部 1.8217 mm（最小=中位=最大）
+    开放链总数              48 条
+    全部 applied             false
+
+我抽查了 BOTTLE 区域 10（12 个 Face 的开放区域）：
+
+    状态            OPEN_BOUNDARY_CANDIDATE
+    开放链          8 条
+    开放端点        [82, 83, 143, 144, 272, 273, 276, 277]
+    桥接候选        4 条，缺口都是 1.8217 mm
+    applied         全部 false
+
+mould_04（1393 个区域）：
+
+    带桥接候选的区域        0 个
+    开放链总数              7 条，全部是“残余闭环”，没有度 1 端点
+
+我方对 mould_04 的说明：它的开放区域边界是**分叉**的（存在度 ≥3 的 Vertex），
+不是简单的两段链，所以拿不到度 1 端点，也就没有桥接候选。这是诚实结果，
+我没有硬凑候选。分叉边界需要后续按“多分支收口规则”单独处理。
+
+
+五、我做的测试
+----------------------------------------------------------------
+
+1. 新增 `test我方把开放边界拆成链并给出桥接候选`：
+   两条开放链（端点 1-4、5-6）应拆成 2 条链、4 个端点、2 条桥接候选，
+   候选全部 `applied=false`，配对集合覆盖全部 4 个端点，最小缺口 10 mm，
+   第一条链长度 30 mm。
+2. 定向回归：`tests\test_step_features.py`、`test_step_engineering.py`、
+   `test_formal_output_contract.py` 合计 48 passed。
+3. 完整门禁 `python -B scripts\verify_project.py` → `status=PASS`：
+   pytest 300 passed、compileall 返回码 0、pip check 无断依赖、
+   outputs_audit 222/229 有效、0 损坏、7 跳过、PASS、cache_cleanup 剩余 0。
+
+
+六、我方诚实保留的限制
+----------------------------------------------------------------
+
+1. 桥接只是候选，`applied=false`，本轮没有改动任何真实几何，也没有写回 CAD。
+2. 贪心配对不是全局最优，代码里已写明上限和升级路径（链序 TSP）。
+3. mould_04 的分叉开放边界本轮没有候选，需要单独的收口规则。
+4. 本轮重生成耗时被同机并发任务抬高：BOTTLE stage3 191.9 秒、BOTTLE 工程 185.9 秒、
+   mould_04 stage3 313.6 秒、mould_04 工程 351.5 秒。这是并发下的墙钟时间，
+   不代表单机独占性能。
+5. 投影面积仍是弦近似；分型面、GUI、XT/PRT、20+20 组正式准确率验收仍是 BASELINE。
+
+
+七、本轮结论
+----------------------------------------------------------------
+
+我把开放区域边界从“只有一个状态”推进到“有链、有端点、有缺口距离、有候选桥接路径”，
+并且全部标成未应用、可审计。BOTTLE 上拿到 21 个区域、24 条缺口候选，缺口统一 1.8217 mm；
+mould_04 的分叉边界如实报告为“无简单链候选”。全量测试 300 passed，完整门禁 PASS，
+四套正式输出已用新代码重新生成。
+
+本轮详细过程同时写入：
+   D:\STP_STL_Missing_Region_Recognition\开发记录.txt
+   D:\STP_STL_Missing_Region_Recognition\reports\开发过程记录.txt

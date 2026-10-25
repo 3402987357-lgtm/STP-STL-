@@ -1,0 +1,16 @@
+{
+  "threshold_mm": 0.15,
+  "threshold_mode": "absolute",
+  "auto_threshold_scale_ratio": 0.002,
+  "auto_threshold_residual_factor": 1.5,
+  "auto_threshold_floor_mm": 0.02,
+  "min_region_area_mm2": 0.5,
+  "min_triangle_count": 1,
+  "registration_mode": "none",
+  "allow_scale": false,
+  "samples_per_triangle": 1,
+  "max_query_points": 200000,
+  "mesh_linear_deflection_mm": 1.0,
+  "mesh_angular_deflection_deg": 15.0,
+  "write_intermediate": false
+}

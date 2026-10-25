@@ -1,0 +1,14 @@
+
+
+===== 开发记录 2026-10-09T01:38:13+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 12 个项目缓存目录。；pytest=393 passed in 166.66s (0:02:46)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=202/263 有效、0 损坏、61 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。

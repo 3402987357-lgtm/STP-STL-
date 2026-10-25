@@ -1,0 +1,8 @@
+{
+  "schema_version": "verification-gate-1.0",
+  "status": "BUSY",
+  "timestamp": "2026-10-16T19:01:54+08:00",
+  "root": "D:\\STP_STL_Missing_Region_Recognition",
+  "stages": [],
+  "message": "已有另一个门禁在运行，我拒绝并发执行：并发会让缓存收口阶段误报剩余缓存。请等当前门禁结束后重跑。（锁的持有者：pid=26536，已占用 452 秒，进程仍在）"
+}

@@ -1,0 +1,77 @@
+{
+  "budget_seconds": 8.0,
+  "measured_count": 8,
+  "within_budget_count": 0,
+  "within_budget_ratio": 0.0,
+  "elapsed_seconds": {
+    "min": 32.581,
+    "max": 135.018,
+    "mean": 85.816
+  },
+  "records": [
+    {
+      "file": "BOTTLE.stp",
+      "size_mb": 50.009,
+      "elapsed_seconds": 88.258,
+      "region_count": 141,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "MD270324.stp",
+      "size_mb": 15.801,
+      "elapsed_seconds": 135.018,
+      "region_count": 5339,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "mould_04.STEP",
+      "size_mb": 15.074,
+      "elapsed_seconds": 70.043,
+      "region_count": 1393,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "revised_mould_oct19.stp",
+      "size_mb": 11.879,
+      "elapsed_seconds": 113.878,
+      "region_count": 1425,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "juice bottle.stp",
+      "size_mb": 11.482,
+      "elapsed_seconds": 100.914,
+      "region_count": 107,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "juice bottle mold.stp",
+      "size_mb": 11.245,
+      "elapsed_seconds": 96.872,
+      "region_count": 83,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "VN_Plastic injection mould.STEP",
+      "size_mb": 6.573,
+      "elapsed_seconds": 48.96,
+      "region_count": 1296,
+      "nan_free": true,
+      "within_budget": false
+    },
+    {
+      "file": "Plastic Bag Clip Mould.stp",
+      "size_mb": 5.611,
+      "elapsed_seconds": 32.581,
+      "region_count": 761,
+      "nan_free": true,
+      "within_budget": false
+    }
+  ]
+}

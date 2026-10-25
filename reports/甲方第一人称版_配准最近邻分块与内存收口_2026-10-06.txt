@@ -1,0 +1,46 @@
+我方配准最近邻分块计算与内存收口记录
+日期：2026-10-06
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方在复核配准模块时发现一个真实缺陷：registration\rigid.py 的 _nearest_points 用
+source[:, None, :] - target[None, :, :] 一次性构造 (N, M, 3) 稠密数组。调用它的
+_vertex_to_vertex_residuals 会把候选和参考顶点各限制到 5000 点，所以每次
+centroid 或 pca 配准都会分配 5000×5000×3×8 字节。我用 tracemalloc 实测这一步峰值
+1335.1 MiB。pipeline 默认就是 centroid 模式，真实 STEP 网格顶点数普遍超过 5000，
+等于每次检测都要承担一次千兆级瞬时分配；在内存紧张或多进程并行时，这会直接以
+MemoryError 打断整次检测，而不是给出一条可复核的警告。
+
+二、我方怎么改
+
+我把 _nearest_points 改成按 source 分块计算：默认 chunk_size=512，逐块做
+argmin 并把最近索引和距离写回结果数组。这个分块思路沿用本项目 detection\distance.py
+已有的做法，没有新增依赖。逐行最近邻的语义没有变化：分块只是把同一行的计算拆开，
+每一行仍然是在全部目标点上取 argmin，所以索引和距离与整块计算逐位一致。
+
+三、我拿到的证据
+
+同一组 5000 个源点对 5000 个目标点，用 tracemalloc 对比：
+
+   - 旧实现（一次性稠密数组）：峰值 1335.1 MiB
+   - 新实现（chunk_size=512 分块）：峰值 156.3 MiB
+
+四、我执行的验证
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_registration_sampling_hardening.py tests\test_pipeline_units.py
+tests\test_core.py 为 19 passed。
+
+我新增 test我方配准残差分块计算与朴素最近邻一致：用 1200 个源点（跨 3 个分块）对
+700 个目标点做 centroid 配准，在测试内部用朴素广播算法重算最近邻，断言
+mean_residual_mm 与 p95_residual_mm 与朴素结果一致。这条检查在分块写错索引或写错
+距离时会失败。
+
+五、我保留的限制
+
+1. 我固定 chunk_size=512，只按源点分块，没有把它暴露成配置项；目标点集很大时，
+   单块内存仍随目标点数线性增长。
+2. 分块只降低峰值内存，不改变最近邻语义，也不改变残差数值。
+3. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、
+   工业 G0/G1/G2、GUI、安装包或生产验收。

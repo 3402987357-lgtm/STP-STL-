@@ -1,0 +1,403 @@
+
+
+===== 开发记录 2026-10-10T04:23:08+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=403 passed in 81.19s (0:01:21)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=202/276 有效、0 损坏、74 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T04:51:17+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=406 passed in 86.28s (0:01:26)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T05:09:16+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=406 passed in 854.04s (0:14:14)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T05:15:36+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=406 passed in 84.21s (0:01:24)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T05:21:10+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=406 passed in 82.18s (0:01:22)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T05:38:21+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=409 passed in 697.17s (0:11:37)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T05:44:05+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=409 passed in 94.10s (0:01:34)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T06:08:01+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=409 passed in 81.51s (0:01:21)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/276 有效、0 损坏、75 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T06:13:16+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 84.83s (0:01:24)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/275 有效、0 损坏、74 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T06:28:03+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 141.42s (0:02:21)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/276 有效、0 损坏、75 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T06:45:09+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=411 passed in 361.63s (0:06:01)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T06:52:46+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 86.82s (0:01:26)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T06:57:14+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 81.74s (0:01:21)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:00:58+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 84.89s (0:01:24)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:04:04+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=411 passed in 83.72s (0:01:23)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:08:04+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 81.65s (0:01:21)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:26:07+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 953.87s (0:15:53)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:32:25+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 86.22s (0:01:26)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:35:52+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 82.53s (0:01:22)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T07:39:50+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=411 passed in 84.98s (0:01:24)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/274 有效、0 损坏、73 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T08:03:13+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 1 个项目缓存目录。；pytest=411 passed in 81.90s (0:01:21)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=201/273 有效、0 损坏、72 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T09:27:34+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 0 个项目缓存目录。；pytest=420 passed in 85.71s (0:01:25)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=209/331 有效、0 损坏、122 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T09:28:35+08:00 =====
+标题：我方修掉真实破损件'补成功的环否决自己'的口径错误，闭合率 3/9 -> 8/9
+状态：已完成，门禁 PASS
+涉及文件：
+- src/cad_inspector/repair/step_hole.py
+- src/cad_inspector/domain/step_repair.py
+- src/cad_inspector/output/step_repair_report.py
+- tests/test_step_repair_sampling.py
+我完成的事情：
+我发现真实破损件的闭合率只有 3/9（33%），远低于记录里写的 89%。根因是口径错误：loop_gap_mm 是补面之前按原始 Wire 量出来的缝长，补面成功之后不改写，于是'能补的本来就是大洞'——补得越好的环留下来的 gap 反而越大。实测测试集/6 全模残余缝已归零、已是有效 Solid，却被自己唯一一个 CANDIDATE 环（gap=1.373mm，正是被成功补掉的那个洞）一票否决，输出不写出。测试集/2、/4、/5、/7 全是同一形态：每条记录里 gap 最大的环恰好都是 CANDIDATE。我新增 patch_accepted 字段标明补面到底有没有被采纳，并让已采纳的环不再参与否决。
+
+我中途犯过两次错并都实测更正：第一次我按 status==CANDIDATE 直接豁免，结果把被面积门禁拒掉的环也放过了，max_hole_area_mm2 这道安全门失效（test_step_repair_ocp 的面积门禁用例变红）；第二次我改成看 repairable，但 repairable 在'环投影面积接近零'这类形态判据上也置 False，实测测试集/6、/7 那两个真正补成的洞（面积 0.14/0.28mm2、平面度都低于阈值）恰恰挂着 False，闭合率又退回 3/9。最终我只认 max_hole_area_mm2 这一道真正的安全门，并为此新增 loop_area_mm2 保存洞的参照面积（area_repaired_mm2 在补面成功后会被改写成补面实测面积，拿它比门禁是错口径）。
+
+我还修掉自己引入的一处崩溃：新增字段没同步进 CSV 的固定表头，DictWriter 抛'dict contains fields not in fieldnames'，step-repair 命令退出码变 2 且 CSV 不落盘。我把 patch_accepted 补进表头。
+我执行的验证：
+真实破损件基准重跑：hole_closed_count 3 -> 8（33% -> 88.9%），SUCCESS 7、REVIEW_REQUIRED 1、NO_ACTION 1；测试集/6 边界 6 -> 0、测试集/7 边界 8 -> 5，两者均已是有效 Solid。新增回归用例钉住'同缝长下 CANDIDATE 且已采纳不否决、未采纳照旧否决'。test_step_repair_sampling + test_step_repair_ocp 共 34 passed（含原先被我弄红的面积门禁用例）。全量 verify_project：status=PASS，420 passed，line_ratio_strict 0.251979。
+我保留的限制：
+训练集/4 仍 NO_ACTION：输入 B-Rep 本身无效且残余缝 0.011mm 已低于容差，按'本来就封闭'不补，属正确行为。测试集/2 仍 REVIEW_REQUIRED。cross-region 闭合、分型面、GUI、XT/PRT、20+20 组正式验收仍是 BASELINE。
+
+
+===== 开发记录 2026-10-10T09:39:56+08:00 =====
+标题：我方把基准体积上限从 16MB 提到 96MB，让全部真实破损件进入统计：9/11=81.8%
+状态：已完成
+涉及文件：
+- scripts/benchmark_step_repair.py
+我完成的事情：
+我发现基准脚本的 max-step-bytes 默认 16MB，把 21 个件里的 5 个（24%）直接挡在统计之外，于是'成功率'的分母只剩挑剩的小件——这是选择性取样而不是时间预算，会让甲方误读。我实测这些件的真实耗时：测试集/3（22.4MB）修完 23 秒、训练集/1（60.8MB）66 秒，远不到跑不完的程度。我按语料里最大件（60.8MB）留余量提到 96MB，让全部件都进统计。
+
+全语料重跑后的诚实数字：11 个真实破损件（另 10 个本身封闭、不属于破损场景）中闭合 9 个 = 81.8%，SUCCESS 8、REVIEW_REQUIRED 2、NO_ACTION 1，中位耗时 7.7 秒。其中新纳入的测试集/3 从 14 -> 24 边界但已闭合且写成 SUCCESS。
+我执行的验证：
+全语料基准：hole_closed_count 9 / 11 = 0.818182，output_written_count 9。此前同口径（只算 16MB 以下）为 3/9 = 33%，修复口径错误后为 8/9 = 89%；扩到全语料后为 9/11 = 81.8%，分母变大是取样变全而非退化。
+我保留的限制：
+训练集/1 仍 REVIEW_REQUIRED（输入 B-Rep 本身无效，52 -> 60 边界，do_no_harm 正确拦住不写出）；训练集/4 NO_ACTION（残余缝 0.011mm 已低于容差，判本来就封闭、不补，属正确行为）；测试集/2 REVIEW_REQUIRED。
+
+
+===== 开发记录 2026-10-10T10:04:03+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 11 个项目缓存目录。；pytest=423 passed in 101.35s (0:01:41)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=214/361 有效、0 损坏、147 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。
+
+
+===== 开发记录 2026-10-10T10:04:31+08:00 =====
+标题：我方修掉'输入无效就一律扣复核'的出身歧视，并修掉一处被静默丢弃的 docstring，真实件 SUCCESS 8 -> 9
+状态：已完成，门禁 PASS
+涉及文件：
+- src/cad_inspector/repair/step_hole.py
+- tests/test_step_repair_sampling.py
+- tests/test_docstring_integrity.py
+我完成的事情：
+我修掉第二处口径错误：旧逻辑只看输入，凡 input_shape_is_valid 为 False 一律扣成 REVIEW_REQUIRED。实测测试集/2 输入 B-Rep 无效，但我修补后输出有效性 True、solid=1、残余缝总长 0.0248mm 已低于 0.05mm 容差、逐环复核无任何实质孔洞——我确实把它修好了，却被'出身不好'挡在 SUCCESS 之外。任务要的是输出修复后的 STP，评判对象应当是输出；输入无效只是起点不是结论。我改成'输入无效且我也没修成有效'才降级，并补一条说明警告。修完仍无效的件（训练集/1、训练集/4）照旧降级，保护没有放松。
+
+我还修掉一处真实缺陷：_residual_boundary_length_mm 的 docstring 在开头被写成两行，第一行是闭合的完整 docstring，第二行又开一个三引号。语法完全合法、compileall 不报错、测试照过，但那段'为什么这么判'的说明从此变成被丢弃的裸字符串常量，谁也读不到。我删掉多余那行，并新增 tests/test_docstring_integrity.py 用 AST 检查全仓源码里函数/类/模块开头是否出现连续两段以上裸字符串——这类缺陷只能靠结构性检查发现，靠 review 和跑测试都发现不了。我实测该检查器能抓到我修掉的那种形态。
+我执行的验证：
+全语料基准：hole_closed_count 9/11 = 0.818182 不变，但 SUCCESS 由 8 升到 9（测试集/2 12 -> 29 边界、已闭合、已写出），REVIEW_REQUIRED 由 2 降到 1，NO_ACTION 1。新增用例钉住'输入无效但输出有效必须给 SUCCESS'，并断言前提真的成立（in_valid False、out_valid True）。新增 docstring 完整性检查 2 项。全量 verify_project：status=PASS，423 passed，line_ratio_strict 0.252471。
+我保留的限制：
+训练集/1（输入无效、52 -> 60 边界、输出仍无效）与训练集/4（残余缝 0.011mm 本就封闭、判 NO_ACTION）仍未修好，但两者都是正确的不伤害行为，不是漏补。cross-region 闭合、分型面、GUI、XT/PRT、20+20 组正式验收仍是 BASELINE。
+
+
+===== 开发记录 2026-10-10T10:17:32+08:00 =====
+标题：我方 STEP 补面口径修复收口：全语料 9/11 闭合、SUCCESS 9；门禁 FAIL 仅剩他人 voxel 用例
+状态：我方负责部分全部通过
+涉及文件：
+- reports\verification_gate_turn33.json
+我完成的事情：
+我对本轮工作做收口核对。我负责的三块全部绿：test_step_repair_sampling + test_step_repair_ocp + test_docstring_integrity 共 37 passed。全语料真实破损件 11 个中闭合 9 个（81.8%），SUCCESS 9、REVIEW_REQUIRED 1、NO_ACTION 1。注释率 0.252535，仍高于 0.25 目标。
+
+全量门禁本轮 FAIL，唯一失败项是 tests/test_voxel_compare.py::test_extra_material_is_detected（assert 270 == 0），属体素比对模块，与我本轮改动的 step_hole / step_repair / step_repair_report / benchmark 无任何交集——我未触碰 detection/voxel_compare.py，该用例应归属并行进行中的体素工作。我把这条留作待认领项，不擅自改他人模块。
+我执行的验证：
+我方三块用例 37 passed。全量 438 项中 437 passed、1 failed（voxel 用例，非我方模块）。comment_ratio line_ratio_strict 0.252535 PASS。全语料基准 hole_closed_ratio 0.8182、by_status SUCCESS 9 / REVIEW_REQUIRED 1 / NO_ACTION 1。
+我保留的限制：
+test_extra_material_is_detected 待体素模块负责人处理。训练集/1（输入无效且修完仍无效）与训练集/4（本就封闭）仍非 SUCCESS，均属正确的不伤害行为。cross-region 闭合、分型面、GUI、XT/PRT、20+20 组正式验收仍是 BASELINE。outputs/_diag 下留有我的临时诊断产物，删除命令被策略拦截，需人工清理。
+
+
+===== 开发记录 2026-10-10T10:26:14+08:00 =====
+标题：我方用统一门禁脚本完成一次交付校验
+状态：门禁 PASS
+涉及文件：
+- scripts/verify_project.py
+- reports/outputs_audit.json
+我完成的事情：
+我方按固定顺序执行字节码清理、全量回归、编译检查、依赖检查、输出审计和缓存收口；每一步的真实结论都写入验证报告。
+我执行的验证：
+bytecode_purge=我已清理 1 个项目缓存目录。；pytest=445 passed in 104.31s (0:01:44)；compileall=<无输出>；pip_check=No broken requirements found.；outputs_audit=214/360 有效、0 损坏、146 跳过、status=PASS；cache_cleanup=我收口时清理 12 个缓存目录，剩余 0 个。
+我保留的限制：
+本门禁只证明当前源码快照在本地通过，不替代甲方真实标注集、XT/PRT 原生解析、工业 G0/G1/G2、GUI 或生产验收。

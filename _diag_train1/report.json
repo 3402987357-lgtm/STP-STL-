@@ -1,0 +1,929 @@
+{
+ "status": "REVIEW_REQUIRED",
+ "output_file": null,
+ "input_shape_is_valid": false,
+ "output_shape_is_valid": false,
+ "input_topology": {
+  "face_count": 730,
+  "edge_count": 4766,
+  "shell_count": 1,
+  "solid_count": 1,
+  "unique_edge_count": 2409,
+  "face_edge_occurrence_count": 4766,
+  "boundary_edge_count": 52,
+  "manifold_edge_count": 2357,
+  "non_manifold_edge_count": 0,
+  "invalid_face_count": 1,
+  "first_invalid_face_id": 633,
+  "degenerated_edge_count": 52,
+  "degenerated_probe_failures": 0
+ },
+ "output_topology": {
+  "face_count": 731,
+  "edge_count": 4774,
+  "shell_count": 1,
+  "solid_count": 0,
+  "unique_edge_count": 2417,
+  "face_edge_occurrence_count": 4774,
+  "boundary_edge_count": 60,
+  "manifold_edge_count": 2357,
+  "non_manifold_edge_count": 0
+ },
+ "warnings": [
+  "我发现输入 STEP BRep 有效性检查未通过。",
+  "我逐面体检后发现 1 个坏面，第一个是第 633 个面；这类面通常带重合顶点与零长边。我实测修它们不会改善修补结果、还可能引入新自由边，所以我只报出来、不动它。，其中退化边 52 条",
+  "我发现补面后仍有开放边界，当前 STP 只能作为人工复核候选。",
+  "我说明一下为什么没补：这 44 个环**全部**被判定为相邻面之间的公差裂缝（空间尺度不超过几何容差），按判据不该补。我实测过另外两条路也走不通——强行补面会让开放边从 60 涨到 302（越补越破）；缝合即使用到 50 倍容差、把面拆散重缝也一条都缝不上。所以这个件以现有手段做不到封闭，建议按人工复核处理。",
+  "我生成了局部补面候选，但输出没有通过封闭实体质量门禁。",
+  "我发现修补后开放边界从 52 条增加到 96 条、缝总长从 0.140364 增加到 0.156464 mm（条数与长度同时变差，判定为越补越破），按不伤害原则已删除输出，保留原始输入并退回人工复核。",
+  "我提示：输入 B-Rep 本身无效，且修补后仍不是有效实体，因此不给 SUCCESS，只作为人工复核候选。"
+ ],
+ "diagnostics": {
+  "repair_attempt_count": 44,
+  "repair_success_count": 1,
+  "repair_success_rate": 0.022727,
+  "continuity_verified": false,
+  "continuity_verified_count": 0,
+  "continuity_summary": {
+   "G0": {
+    "candidate_count": 1,
+    "verified_count": 1,
+    "status": "VERIFIED"
+   },
+   "G1": {
+    "candidate_count": 0,
+    "verified_count": 0,
+    "status": "NOT_VERIFIED"
+   },
+   "G2": {
+    "candidate_count": 0,
+    "verified_count": 0,
+    "status": "NOT_VERIFIED"
+   }
+  },
+  "continuity_measured": {
+   "G0_max_deviation_mm": {
+    "measured_count": 1,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "G1_max_normal_angle_deg": {
+    "measured_count": 0,
+    "max": null,
+    "mean": null
+   },
+   "G2_max_curvature_delta_per_mm": {
+    "measured_count": 0,
+    "max": null,
+    "mean": null
+   }
+  },
+  "reference_surface_available": false,
+  "deviation_max_mm": "NOT_AVAILABLE",
+  "deviation_mean_mm": "NOT_AVAILABLE",
+  "deviation_status": "NOT_AVAILABLE_NO_REFERENCE_SURFACE"
+ },
+ "elapsed_seconds": 76.49296770000365,
+ "region_count": 44,
+ "regions": [
+  {
+   "id": 1,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0009307152290664682,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001004 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000031 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 2,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.004730112240266514,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.002297 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000095 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 3,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0008994946480671273,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000880 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我无法用拟合平面重建补面：ValueError:我发现去重后边界点不足三个，不能重建补面。",
+    "我无法量出该环的平面度，因此不启用拟合平面兜底，退回人工复核。"
+   ]
+  },
+  {
+   "id": 4,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0016236951603887096,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001199 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000091 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 5,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.003336445430007217,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.003179 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000208 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 6,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0021297391884105518,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001921 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000081 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 7,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0006931177910530234,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000688 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000018 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 8,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.004652921868336933,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.003971 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000511 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 9,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.005537261759116614,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.005480 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00001262 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 10,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0027668346853558495,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.002391 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000106 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 11,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0009219531617641031,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001152 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我无法用拟合平面重建补面：ValueError:我发现去重后边界点不足三个，不能重建补面。",
+    "我无法量出该环的平面度，因此不启用拟合平面兜底，退回人工复核。"
+   ]
+  },
+  {
+   "id": 12,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.00019116906968297232,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 4,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000176 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我无法用拟合平面重建补面：ValueError:我发现去重后边界点不足三个，不能重建补面。",
+    "我无法量出该环的平面度，因此不启用拟合平面兜底，退回人工复核。"
+   ]
+  },
+  {
+   "id": 13,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0016228249637106227,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.006677 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000752 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 14,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.004685932563511274,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.003423 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000524 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 15,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.002158996139090311,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001858 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000146 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 16,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0037137928586116723,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.002849 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000344 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 17,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0030153141648560267,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.012543 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00001912 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 18,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.00053842839033385,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001068 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000016 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 19,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0013213143303067586,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001499 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000077 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 20,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.003895310205972767,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.002992 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000058 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 21,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0061538797420731366,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.004223 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000079 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 22,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0013857412908283556,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001392 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000005 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 23,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.004543609695328174,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.004749 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000573 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 24,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0016693185768657506,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001352 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000003 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 25,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0015121976166304917,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001360 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000001 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 26,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.006413558345795646,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.004522 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000004 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 27,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0022369312595252704,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001900 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000039 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 28,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.000978850285564082,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000862 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我无法用拟合平面重建补面：ValueError:我发现去重后边界点不足三个，不能重建补面。",
+    "我无法量出该环的平面度，因此不启用拟合平面兜底，退回人工复核。"
+   ]
+  },
+  {
+   "id": 29,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0009991726692190263,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000930 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我无法用拟合平面重建补面：ValueError:我发现去重后边界点不足三个，不能重建补面。",
+    "我无法量出该环的平面度，因此不启用拟合平面兜底，退回人工复核。"
+   ]
+  },
+  {
+   "id": 30,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.02110396602019529,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.017121 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000425 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 31,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.002861829365998104,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.008376 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00001915 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 32,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0015009468484972802,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001239 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000004 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 33,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.007296157591116268,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.009876 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00001471 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 34,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.007668669692759156,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.005826 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000790 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 35,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0011819028835952066,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001137 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000007 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 36,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0007510477325273042,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.002712 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000087 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 37,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.002598300575986369,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001986 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000078 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 38,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.005679839450875459,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.003940 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000678 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 39,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0017231840619022021,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001328 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000059 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 40,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0011803261744484574,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000784 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000001 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 41,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.001769153811258708,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001650 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000063 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  },
+  {
+   "id": 42,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.00014742623762898572,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 4,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.000156 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我无法用拟合平面重建补面：ValueError:我发现去重后边界点不足三个，不能重建补面。",
+    "我无法量出该环的平面度，因此不启用拟合平面兜底，退回人工复核。"
+   ]
+  },
+  {
+   "id": 43,
+   "status": "CANDIDATE",
+   "method": "ocp_fitted_plane_face",
+   "patch_accepted": true,
+   "area_mm2": 2.5180526673182066e-05,
+   "loop_gap_mm": 0.007362357764493359,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 2,
+   "vertices": 10,
+   "continuity": "G0_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 2 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.008215 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我在补面上取不到该边界 Edge 的参数曲线，因此本条边不参与 G1/G2 判定。",
+    "我没有验证通过 G1 法向连续性；当前结果不能宣称 G1。",
+    "我因 G1 未通过而不把 G2 曲率作为验收证据。",
+    "我已验证 G0 边界贴合，但相邻曲面法向未达到 G1 阈值。"
+   ]
+  },
+  {
+   "id": 44,
+   "status": "MANUAL_REVIEW_REQUIRED",
+   "method": "none",
+   "patch_accepted": false,
+   "area_mm2": 0.0,
+   "loop_gap_mm": 0.0022798748440637415,
+   "planarity_mm": null,
+   "review_required": true,
+   "boundary_edges": 1,
+   "vertices": 5,
+   "continuity": "NOT_VERIFIED",
+   "warnings": [
+    "我发现边界 Edge 数量只有 1 条，少于要求的 3 条，不能建立补面。",
+    "我发现该环的空间尺度仅 0.001946 mm，不超过几何容差，判定为相邻面之间的公差裂缝而非破损区域，不补面。",
+    "我用最佳拟合平面重建了补面，边界点已投影到该平面；请按人工复核流程确认偏差可接受。",
+    "我无法完成该 Wire 补面候选：RuntimeError:我发现补面面积 0.00000090 小于有意义下限 0.00002500 mm2，判定为退化面，拒绝采用。"
+   ]
+  }
+ ]
+}

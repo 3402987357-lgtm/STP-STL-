@@ -1,0 +1,116 @@
+{
+  "schema_version": "comment-ratio-1.0",
+  "roots": [
+    "D:\\STP_STL_Missing_Region_Recognition\\src",
+    "D:\\STP_STL_Missing_Region_Recognition\\scripts"
+  ],
+  "file_count": 92,
+  "total_lines": 28525,
+  "blank_lines": 2837,
+  "full_line_comments": 951,
+  "docstring_lines": 3458,
+  "inline_comments": 29,
+  "strict_comment_lines": 4409,
+  "loose_comment_lines": 4438,
+  "line_ratio_strict": 0.154566,
+  "line_ratio_with_inline": 0.155583,
+  "definition_count": 624,
+  "documented_definition_count": 577,
+  "docstring_coverage": 0.924679,
+  "module_count": 92,
+  "documented_module_count": 92,
+  "module_docstring_coverage": 1.0,
+  "parse_failures": [],
+  "lowest_ratio_files": [
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\scripts\\probe_model.py",
+      "lines": 22,
+      "comment_lines": 2,
+      "ratio": 0.090909
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\domain\\models.py",
+      "lines": 107,
+      "comment_lines": 12,
+      "ratio": 0.11215
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\detection\\step_engineering.py",
+      "lines": 1959,
+      "comment_lines": 224,
+      "ratio": 0.114344
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\scripts\\run_real_pair_stress.py",
+      "lines": 712,
+      "comment_lines": 83,
+      "ratio": 0.116573
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\scripts\\diagnose_open_regions.py",
+      "lines": 128,
+      "comment_lines": 15,
+      "ratio": 0.117188
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\detection\\step_features.py",
+      "lines": 2847,
+      "comment_lines": 349,
+      "ratio": 0.122585
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\scripts\\run_tests.py",
+      "lines": 57,
+      "comment_lines": 7,
+      "ratio": 0.122807
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\scripts\\verify_project.py",
+      "lines": 435,
+      "comment_lines": 54,
+      "ratio": 0.124138
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\io\\step_bom.py",
+      "lines": 1094,
+      "comment_lines": 142,
+      "ratio": 0.129799
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\detection\\step_parting.py",
+      "lines": 1362,
+      "comment_lines": 177,
+      "ratio": 0.129956
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\pipeline.py",
+      "lines": 449,
+      "comment_lines": 59,
+      "ratio": 0.131403
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\output\\visualization.py",
+      "lines": 720,
+      "comment_lines": 95,
+      "ratio": 0.131944
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\io\\batch_probe.py",
+      "lines": 180,
+      "comment_lines": 24,
+      "ratio": 0.133333
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\domain\\step_engineering.py",
+      "lines": 156,
+      "comment_lines": 21,
+      "ratio": 0.134615
+    },
+    {
+      "path": "D:\\STP_STL_Missing_Region_Recognition\\src\\cad_inspector\\output\\step_engineering_report.py",
+      "lines": 554,
+      "comment_lines": 75,
+      "ratio": 0.135379
+    }
+  ]
+}

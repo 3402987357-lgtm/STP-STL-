@@ -1,0 +1,45 @@
+收口验证：我改了 tests/ 之后，成绩是否受影响？——**没有，10/11 与 17/20 均保持**
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、为什么做这次验证
+
+我这一阶段动了 `tests/`：把 8 个测试改成 `tmp_path`、并加了防倒退护栏。
+虽然没碰生产代码，但**成绩是本项目的核心指标**，改完必须回头确认没受影响。
+
+二、真实破损基准（11 件）：**10/11 保持**
+
+    hole_closed_count = 10     hole_closed_ratio = **0.909091**
+    by_status = NO_ACTION 1 / REVIEW_REQUIRED 1 / SUCCESS 9
+    brep_valid_true_count = 9  output_written_count = 9
+    elapsed_seconds: min 3.722 / median 23.405 / max 95.430
+    墙钟 927 秒
+
+三、合成破损基准（20 件）：**17/20 保持**
+
+    hole_closed_count = 17     hole_closed_ratio = **0.85**
+    by_status = REVIEW_REQUIRED 3 / SUCCESS 17
+    by_face_count: face1 -> 9/10；face3 -> 8/10
+    elapsed_seconds: min 3.973 / median 27.436 / max **43.123**
+    墙钟 1102 秒
+
+四、一个附带的好消息：11 小时离群值**没有复现**
+
+上一次跑合成时 `训练集/5#face3` 花了 **39598 秒（11 小时）**。
+这一次同一件的 max 只有 **43.123 秒**，而且三个 REVIEW 件的位置与上次一致。
+
+这**补强**了上一轮的结论：那个 11 小时确实是**并发拥堵**造成的，不是代码慢路径。
+
+五、结论
+
+    **我对 tests/ 的改动（tmp_path + 护栏）没有影响任何成绩。**
+    真实 10/11、合成 17/20 与改动前完全一致。
+
+当前完整状态：真实 **10/11** / 合成 **17/20** / 测试 **66 passed**。
+
+六、限制
+
+1. 两个基准各跑**一次**，没有多次取平均。
+2. 跑真实时开跑有 4 个进程、跑合成时有 5 个——**都不是完全空闲**，
+   但成绩类指标不受并发影响（只影响耗时）。
+3. 本轮**未改任何生产代码**。

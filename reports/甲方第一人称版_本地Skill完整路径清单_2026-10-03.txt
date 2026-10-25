@@ -1,0 +1,188 @@
+我方本地 Skill 完整路径清单
+
+项目：枕型模具部件智能分型设计与三维模型缺失区域识别
+项目目录：D:\STP_STL_Missing_Region_Recognition
+记录日期：2026-10-03
+
+一、我方说明
+
+我把当前本机可调用的 Skill 入口、用途和使用建议整理在本文件中，供后续 AI
+读取、复制或在获得授权后安装。我没有为了占用 D 盘空间而把所有 Skill 复制到
+项目目录；Skill 的源文件仍保留在本机 Codex/Agents 技能目录。
+
+“可调用”只表示工具入口存在，不表示该工具已经完成本项目的工业验收。后续 AI
+必须先读取 README、开发过程记录、开发完成情况报告书和正式 outputs，再决定是否
+使用某个 Skill。
+
+二、文档与交付物 Skill
+
+1. documents
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\openai-primary-runtime\documents\26.930.11008\skills\documents\SKILL.md
+   用途：DOCX/Word 创建、修改、渲染和版式核验。
+   本项目建议：后续需要把 TXT 汇报转成甲方 Word 时使用。
+
+2. pdf
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\openai-primary-runtime\pdf\26.930.11008\skills\pdf\SKILL.md
+   用途：PDF 读取、生成、渲染、文本和表单检查。
+   本项目建议：甲方要求 PDF 交付或 PDF 版式验收时使用。
+
+3. spreadsheets
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\openai-primary-runtime\spreadsheets\26.930.11008\skills\spreadsheets\SKILL.md
+   用途：XLSX、CSV、TSV、公式、格式、图表和数据分析。
+   本项目建议：建立 Face/Edge/区域人工标注表和验收统计时使用。
+
+4. presentations
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\openai-primary-runtime\presentations\26.930.11008\skills\presentations\SKILL.md
+   用途：PPTX、Google Slides 和汇报演示文稿。
+   本项目建议：甲方需要阶段汇报 PPT 时使用。
+
+5. template-creator
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\openai-primary-runtime\template-creator\26.930.11008\skills\template-creator\SKILL.md
+   用途：从参考文档、表格、演示或已有交付物制作可复用模板。
+   本项目建议：固定甲方报告书、标注表和验收表格式后使用。
+
+三、工程、浏览器和可视化 Skill
+
+1. visualize
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\visualize\1.0.45\skills\visualize\SKILL.md
+   用途：生成图表、模拟、区域覆盖图和交互式可视化。
+   本项目建议：展示区域 Face 覆盖、复核优先级和误差分布时使用。
+
+2. imagegen
+   路径：C:\Users\HUAWEI\.codex\skills\imagegen\SKILL.md
+   用途：生成或编辑位图、示意图和界面素材。
+   本项目建议：只有甲方需要流程图素材、界面原型或报告插图时使用。
+
+3. computer-use
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\openai-bundled\computer-use\26.928.31416\skills\computer-use\SKILL.md
+   用途：受控操作 Windows 应用和浏览器。
+   本项目建议：后续打开 CAD 软件做人工复核、导入 STEP/IGS 和 Windows 验收时使用。
+
+4. tabbit
+   路径：C:\Users\HUAWEI\.agents\skills\tabbit\SKILL.md
+   用途：浏览器导航、网页检查和交互验证。
+   本项目建议：查阅官方 CAD/OCP 文档或 GitHub 参考项目时使用。
+
+四、OpenAI、技能管理和代码简化 Skill
+
+1. openai-docs
+   路径：C:\Users\HUAWEI\.codex\skills\openai-docs\SKILL.md
+   用途：OpenAI、Codex、API、模型、自动化和技能文档。
+   本项目建议：后续 AI 需要调用 OpenAI API 或编排自动化时使用。
+
+2. skill-installer
+   路径：C:\Users\HUAWEI\.codex\skills\skill-installer\SKILL.md
+   用途：按授权安装可用的 Codex Skill。
+   本项目建议：只有明确需要某个新 Skill 时安装，不能为了“全部下载”而盲目安装。
+
+3. skill-creator
+   路径：C:\Users\HUAWEI\.codex\skills\skill-creator\SKILL.md
+   用途：创建或更新项目专用、可复用的 Skill。
+   本项目建议：把“STEP 区域审计”和“甲方验收流程”固化成 Skill 时使用。
+
+4. ponytail
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\ponytail\ponytail\4.10.1\skills\ponytail\SKILL.md
+   用途：删除无用代码、减少依赖、保持最小必要实现。
+   本项目建议：每轮功能完成后做一次复杂度和 D 盘空间复核。
+
+5. ponytail-audit
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\ponytail\ponytail\4.10.1\skills\ponytail-audit\SKILL.md
+   用途：全仓库过度工程审计。
+   本项目建议：发现重复输出、重复适配器或无用依赖时使用。
+
+6. ponytail-review
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\ponytail\ponytail\4.10.1\skills\ponytail-review\SKILL.md
+   用途：只针对过度工程和可删除复杂度做代码审查。
+   本项目建议：准备交付或长期维护前使用。
+
+7. ponytail-debt
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\ponytail\ponytail\4.10.1\skills\ponytail-debt\SKILL.md
+   用途：整理代码中的 ponytail 延后事项。
+   本项目建议：后续需要管理 XT/PRT、永久 CAD ID 等技术债务时使用。
+
+8. ponytail-gain
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\ponytail\ponytail\4.10.1\skills\ponytail-gain\SKILL.md
+   用途：显示代码和运行成本的简化收益。
+   本项目建议：甲方需要解释空间、依赖和运行成本变化时使用。
+
+9. ponytail-help
+   路径：C:\Users\HUAWEI\.codex\plugins\cache\ponytail\ponytail\4.10.1\skills\ponytail-help\SKILL.md
+   用途：查询 ponytail 模式、命令和使用方式。
+   本项目建议：后续 AI 接手仓库时先读取。
+
+五、我方给后续 AI 的固定提示词
+
+请以甲方第一人称继续处理：
+D:\STP_STL_Missing_Region_Recognition
+
+先读取 README、长计划、开发过程记录、开发完成情况报告书、Skill 路径清单和
+正式 outputs。所有代码、测试、日志和报告继续写入 D 盘。每次代码修改后先跑
+定向极端测试，再跑无缓存全量 pytest、compileall、pip check、正式输出审计和
+缓存清理。不得删除 data\raw、data\provided、.venv、正式 outputs 或正式报告。
+不得把 BASELINE、REVIEW_REQUIRED、UNRESOLVED、边界 Edge、几何签名或类别候选
+写成工业最终验收。每轮实际修改必须以第一人称追加到
+reports\开发过程记录.txt。
+
+六、当前核心关键词
+
+step-engineering-features-1.7
+boundary_edge_ids
+boundary_edge_count
+review_reason_codes
+review_priority
+Face 覆盖审计
+稳定 CAD ID
+跨 CAD 拓扑映射
+真实标注集
+XT/PRT 授权适配器
+最终封闭分型面
+实体布尔
+G0/G1/G2
+资源保护
+人工复核
+
+七、我方空间原则
+
+我方只删除已确认可再生的 __pycache__、.pytest_cache、.mypy_cache、.ruff_cache、
+临时日志、临时探针和重复中间输出。原始 CAD、provided 数据、.venv、正式 JSON、
+CSV、STEP、IGS、PLY、STL 和 TXT 报告均属于交付或复现资产，不擅自删除。
+
+===== 2026-10-03 本轮实际工具与清理记录 =====
+
+我方本轮实际使用 PowerShell、D 盘 `.venv` Python、OCP/OCCT、pytest、
+compileall、pip check、JSON/CSV 结构化审计和项目内受保护清理脚本。
+我方没有下载未经验证的外部 Skill，也没有把 Skill 名称当作功能完成证明。
+本轮清理脚本释放 236651 字节，删除对象仅为两份再生成临时日志及项目可再生缓存；
+原始 CAD、provided 数据、`.venv`、源码、测试、正式输出和报告全部保留。
+
+我方当前交接关键词同步为：`step-engineering-features-1.9`、
+`parting_role_candidates`、`parting_confidence`、`parting_review_required`、
+`parting_evidence`、`PARTING_REGION_AMBIGUOUS`、`step-repair-1.2`、
+`G0_VERIFIED` 和 `170 passed`。
+
+===== 2026-10-06 本地 Skill 与当前版本更正 =====
+
+上一条交接关键词是历史记录，已被本轮结果取代。我方当前阶段 3 schema 为
+`step-feature-classification-1.8`，工程 schema 为 `step-engineering-features-2.3`，
+工程区域 CSV 为 44 列，全量测试 `209 passed`，outputs audit `30/30 PASS`。
+本轮没有下载或安装新的本地 Skill，只复用当前项目已经验证的 Python、OCP、NumPy、
+pytest、PowerShell、JSON/CSV 标准库工具链。
+
+详细记录见 `reports\甲方第一人称版_主边界Wire投影面积校验与清理终检_2026-10-06.txt`。
+
+===== 2026-10-06 边界环层级与 CSV 上限收口索引 =====
+
+我方本轮完成闭合环层级、孔洞候选、相交环冲突、47 列区域 CSV 和 CSV 单元格上限修复。
+阶段 3/工程 schema 为 `step-feature-classification-1.9` 和
+`step-engineering-features-2.4`，全量测试 `225 passed`，outputs audit `30/30 PASS`。
+
+详细记录见 `reports\甲方第一人称版_边界环层级与CSV上限收口_2026-10-06.txt`。
+
+===== 2026-10-06 D 盘空间收口与无用文件排查索引 =====
+
+我方本轮按甲方要求做 D 盘空间收口：复核白名单清理脚本，确认可再生成输出命中 0 项、
+项目缓存目录 0，并用统一门禁清理 40 个字节码缓存。项目本体合计约 2,174.73 MiB，
+其中 data 1,351.56 MiB、.venv 688.85 MiB、outputs 132.63 MiB，均为受保护内容。
+桌面 rar 压缩包因本机缺少解压工具未核对，仅登记不删。D 盘可用约 178.44 GiB。
+
+详细记录见 `reports\甲方第一人称版_D盘空间收口与无用文件排查_2026-10-06.txt`。

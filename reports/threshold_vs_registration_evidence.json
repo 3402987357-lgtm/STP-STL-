@@ -1,0 +1,185 @@
+{
+  "schema_version": "threshold-vs-registration-evidence-1.0",
+  "source": "outputs/acceptance_v10/summary.json",
+  "parts": 19,
+  "configured_threshold_mm": 0.15,
+  "parts_below_recommended": 18,
+  "parts_with_missing_ratio_ge_50pct": 14,
+  "recommended_threshold_min": 0.138389,
+  "recommended_threshold_median": 0.551835,
+  "recommended_threshold_max": 3.460557,
+  "conclusion": "0.15mm 固定阈值在 18/19 个有推荐值的真实件上低于推荐值（唯一例外是测试集/6，推荐 0.138mm）；14/20 个件因此把 >=50% 的表面判成缺失，默认配置在真实语料上不可用。",
+  "rows": [
+    {
+      "pair": "训练集/0",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.710291,
+      "registration_mean_residual_mm": 0.473528,
+      "missing_area_ratio": 0.665963,
+      "elapsed_seconds": 49.928,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/2",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 2.001041,
+      "registration_mean_residual_mm": 1.334028,
+      "missing_area_ratio": 0.911132,
+      "elapsed_seconds": 108.735,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/3",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.513055,
+      "registration_mean_residual_mm": 0.342037,
+      "missing_area_ratio": 0.541292,
+      "elapsed_seconds": 43.18,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/4",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.476501,
+      "registration_mean_residual_mm": 0.317668,
+      "missing_area_ratio": 0.768564,
+      "elapsed_seconds": 14.578,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/5",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.583974,
+      "registration_mean_residual_mm": 0.389316,
+      "missing_area_ratio": 0.772165,
+      "elapsed_seconds": 59.61,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/6",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 1.443235,
+      "registration_mean_residual_mm": 0.962157,
+      "missing_area_ratio": 0.949532,
+      "elapsed_seconds": 114.216,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/7",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.735594,
+      "registration_mean_residual_mm": 0.490396,
+      "missing_area_ratio": 0.866805,
+      "elapsed_seconds": 49.617,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "训练集/8",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.254762,
+      "registration_mean_residual_mm": 0.169842,
+      "missing_area_ratio": 0.851842,
+      "elapsed_seconds": 20.811,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/1",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.551835,
+      "registration_mean_residual_mm": 0.36789,
+      "missing_area_ratio": 0.647361,
+      "elapsed_seconds": 183.441,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/10",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.371682,
+      "registration_mean_residual_mm": 0.247788,
+      "missing_area_ratio": 0.515262,
+      "elapsed_seconds": 200.906,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/11",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 3.460557,
+      "registration_mean_residual_mm": 2.307038,
+      "missing_area_ratio": 0.957159,
+      "elapsed_seconds": 528.498,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/12",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 1.450524,
+      "registration_mean_residual_mm": 0.967016,
+      "missing_area_ratio": 0.878014,
+      "elapsed_seconds": 129.877,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/2",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.333584,
+      "registration_mean_residual_mm": 0.222389,
+      "missing_area_ratio": 0.800241,
+      "elapsed_seconds": 53.67,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/5",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.1937,
+      "registration_mean_residual_mm": 0.129133,
+      "missing_area_ratio": 0.215598,
+      "elapsed_seconds": 14.567,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/6",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.138389,
+      "registration_mean_residual_mm": 0.092259,
+      "missing_area_ratio": 0.237698,
+      "elapsed_seconds": 9.688,
+      "configured_below_recommended": false
+    },
+    {
+      "pair": "测试集/7",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.283314,
+      "registration_mean_residual_mm": 0.188876,
+      "missing_area_ratio": 0.477974,
+      "elapsed_seconds": 33.887,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/8",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.783067,
+      "registration_mean_residual_mm": 0.522045,
+      "missing_area_ratio": 0.716539,
+      "elapsed_seconds": 196.81,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/4",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.439656,
+      "registration_mean_residual_mm": 0.293104,
+      "missing_area_ratio": 0.132924,
+      "elapsed_seconds": 76.788,
+      "configured_below_recommended": true
+    },
+    {
+      "pair": "测试集/3",
+      "configured_threshold_mm": 0.15,
+      "recommended_threshold_mm": 0.618051,
+      "registration_mean_residual_mm": 0.412034,
+      "missing_area_ratio": 0.223249,
+      "elapsed_seconds": 131.23,
+      "configured_below_recommended": true
+    }
+  ]
+}

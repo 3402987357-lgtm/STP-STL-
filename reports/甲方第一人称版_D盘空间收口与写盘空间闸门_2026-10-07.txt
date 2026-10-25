@@ -1,0 +1,95 @@
+我方 D 盘空间收口与写盘空间闸门记录
+日期：2026-10-07
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+甲方要求"在写的过程中把没用的删掉，节省 D 盘空间，防止爆掉"。
+我方先量清家底，再动手清理，最后补上一道能长期防爆盘的闸门，
+而不是只在这一次手工删几个文件了事。
+
+二、我先量清家底
+
+1. D 盘：已用约 553.41 GiB，空闲约 178.25 GiB；C 盘空闲约 91.59 GiB。
+2. 项目占用（本轮清理前）：
+   - data      1351.6 MiB  （甲方原始 CAD：provided 与 raw，禁止删除）
+   - .venv      688.9 MiB  （运行环境，禁止删除）
+   - outputs    151.4 MiB  （正式产物，受清理脚本白名单保护）
+   - reports      0.9 MiB  （我方交付记录，保留）
+   - src/tests/scripts/configs 合计约 1.2 MiB（源码与用例，保留）
+3. 全项目扫描：没有任何 __pycache__ / .pytest_cache / .mypy_cache /
+   .ruff_cache，也没有 outputs\_* 临时探针目录。
+   说明并行工作已经在按项目脚本收口，项目本身已经是"干净"状态。
+
+三、我执行的可再生垃圾回收
+
+我跑了项目自带的两个收口脚本，它们都带白名单与越界保护：
+
+  scripts\cleanup_project_caches.ps1        -> 我清理缓存目录 0 个
+  scripts\cleanup_regenerable_outputs.ps1   -> 我清理目标 0 个，释放 0 字节
+
+结论：本轮"删无用文件"回收为 0 字节，因为上一轮已经清理干净。
+我把 outputs 复核为 158,728,848 字节，全部是受保护的正式产物或已收口的
+演示/基准输出，没有可再删项。
+
+四、我找到的真实风险，并补上的闸门
+
+项目此前只有"关掉彩色网格输出"这种省盘开关，没有任何"磁盘快写满就停"
+的保护。真正会撑爆 D 盘的是重负载批量运行连续写出的大文件
+（例如 outputs\step_engineering\mould_04\mould_04.engineering.json 单个
+就有 53 MiB）。批量跑真实零件时，一旦写满盘，半截文件、后续命令连锁失败，
+甲方现场会很难排查。
+
+我在所有产物写出的唯一入口上加了空间闸门：
+
+  src\cad_inspector\output\atomic.py
+
+1. 新增 ensure_free_space(path, minimum_bytes=None)：写出前读目标所在卷的
+   空闲空间，低于下限就抛出 OSError 并明确写出"拒绝写出 + 剩余字节 + 下限"。
+2. 新增 minimum_free_bytes()：下限缺省 512 MiB，可用环境变量
+   CAD_INSPECTOR_MIN_FREE_MB 覆盖；非数字或留空回落到缺省值，不静默放行。
+3. atomic_path() 在建临时文件之前调用 ensure_free_space()。
+   全项目的 JSON / CSV / STP / PLY 产物都经 atomic_path 写出，
+   所以在这一处加闸门，等于一次性覆盖了所有正式输出路径，改动面最小。
+
+设计取舍（已写进代码注释）：闸门只看写前空闲量，不预估本次载荷大小。
+单文件远小于 512 MiB 下限时足够防爆盘；真出现接近下限的巨型单文件时，
+再升级为"预估大小 + 安全余量"的判定。
+
+五、我执行的验证
+
+1. 新增用例 tests\test_output_atomic.py：
+   - test我方空间不足时拒绝写出：注入极大下限，断言 ensure_free_space 与
+     atomic_path 都抛"拒绝写出"，且目标文件没有被创建；
+   - test我方空间充足时正常写出：minimum_bytes=0 时正常原子替换；
+   - test我方空间下限缺省为512兆且可被环境变量覆盖：校验 512 MiB 缺省、
+     环境变量覆盖、非法值回落三种情形。
+2. 定向回归（覆盖所有真实写出路径）：
+   test_output_atomic、test_output_reproducibility、test_formal_output_contract、
+   test_pipeline_units、test_bom_batch、test_step_bom_ocp、test_step_repair_ocp、
+   test_parting_cli、test_visualization、test_artifact_audit、test_cleanup_policy、
+   test_cli_commands -> 83 passed in 38.54s。
+3. 编译与字节码策略：compileall 退出码 0；test_worker_bytecode_policy 通过。
+4. 闸门自测：CAD_INSPECTOR_MIN_FREE_MB=1048576（即 10^12 MiB）时，
+   atomic_path 立即拒绝写出，退出前不残留临时文件。
+
+六、我明确保留、没有删的东西
+
+1. data\provided 与 data\raw：甲方原始 CAD，禁止删除。
+2. .venv：运行环境，禁止删除。
+3. outputs 内的正式产物与基准/演示输出：受清理脚本白名单保护。
+4. D 盘其他目录（Software 5.6 GiB、Downloads 396 MiB、npm-cache 310 MiB 等）
+   属于用户其他项目与全局工具，不在本项目范围内，我没有越界删除。
+   其中 D:\npm-cache 是可再生的全局缓存（约 310 MiB），需要时可由用户自行清理。
+5. D:\桌面\144.rar（53 MiB）与 6.rar（12 MiB）：与本任务无关，保留。
+
+七、我保留的限制
+
+1. 本轮项目内可回收空间为 0 字节，是因为上一轮已收口，不代表项目还有大量冗余。
+2. 空间闸门是"写前下限"策略，不预估单次载荷大小；极端大单文件场景见第四节的升级路径。
+3. 512 MiB 缺省下限是策略选择，不是甲方指标；需要更严或更松时用
+   CAD_INSPECTOR_MIN_FREE_MB 调整。
+4. 闸门只覆盖经 atomic_path 的写出；绕过该入口的直接写文件（若未来新增）
+   不在保护范围内。
+
+详细代码位置：src\cad_inspector\output\atomic.py；用例：tests\test_output_atomic.py。

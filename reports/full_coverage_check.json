@@ -1,0 +1,54 @@
+{
+  "schema_version": "full-coverage-check-1.0",
+  "max_query_points": 700000,
+  "parts": 4,
+  "conclusion_flips": [],
+  "max_missing_delta": 0.00023700000000000001,
+  "conclusion": "把 4 个低覆盖件提到 100% 采样后，区域数与状态全部不变；missing 比例最大变化 0.024 个百分点（测试集/1：0.088% -> 0.112%）。即提高覆盖只是让面积更准，没有翻转任何结论。",
+  "rows": [
+    {
+      "pair": "测试集/1",
+      "coverage_before": 0.789777,
+      "coverage_after": 1.0,
+      "missing_ratio_before": 0.000879,
+      "missing_ratio_after": 0.001116,
+      "regions_before": 0,
+      "regions_after": 0,
+      "status_before": "review",
+      "status_after": "review"
+    },
+    {
+      "pair": "测试集/10",
+      "coverage_before": 0.927523,
+      "coverage_after": 1.0,
+      "missing_ratio_before": 0.0,
+      "missing_ratio_after": 0.0,
+      "regions_before": 0,
+      "regions_after": 0,
+      "status_before": "review",
+      "status_after": "review"
+    },
+    {
+      "pair": "测试集/3",
+      "coverage_before": 0.307101,
+      "coverage_after": 1.0,
+      "missing_ratio_before": 0.0,
+      "missing_ratio_after": 0.0,
+      "regions_before": 0,
+      "regions_after": 0,
+      "status_before": "review",
+      "status_after": "review"
+    },
+    {
+      "pair": "测试集/8",
+      "coverage_before": 0.786337,
+      "coverage_after": 1.0,
+      "missing_ratio_before": 0.0,
+      "missing_ratio_after": 0.0,
+      "regions_before": 0,
+      "regions_after": 0,
+      "status_before": "review",
+      "status_after": "review"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+我方正式输出内容摘要与字节级复现校验记录
+日期：2026-10-06
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方发现一个真实缺陷：正式 JSON 报告顶层内嵌 elapsed_seconds（本次运行的墙钟耗时）。
+同一个输入、同一份源码，每次重新生成报告，耗时都会变化，文件字节随之改变。结果是
+甲方无法用"两次运行字节是否一致"来证明同一输入得到同一结果，正式交付物只能人工比对
+内容，不能做机器化的复现校验。
+
+二、我方怎么改
+
+1. 我新增 src\cad_inspector\reproducibility.py，提供稳定内容摘要：
+   - stable_payload()：递归剔除 elapsed_seconds 这类只反映本次运行的易变字段，并把
+     所有字典键统一转成字符串，保证"内存对象"和"JSON 读回对象"得到同一份规范负载；
+   - content_sha256()：对规范化负载按 UTF-8、键排序、无多余空白的 JSON 计算 SHA-256；
+   - with_content_digest()：给报告负载补上 content_sha256 字段。
+2. 我在五类正式报告的 to_dict() 里写入 content_sha256：
+   - step-feature-classification（阶段 3 区域）
+   - step-engineering-features（工程区域）
+   - mold-bom（BOM）
+   - step-face-features（Face 特征）
+   - step-topology（拓扑）
+3. 我把输出审计器 io\artifact_audit.py 接上校验：一旦 JSON 里存在 content_sha256，
+   就重新计算并比对；被改动过的内容会直接判为 INVALID，而不是只看文件能不能解析。
+
+三、schema 升级与重生成
+
+因为我改变了正式 JSON 的内容，我同步升级并重生成了两套正式输出：
+   - step-feature-classification-1.10（BOTTLE BASELINE / 141 区域；mould_04 REVIEW_REQUIRED / 1393 区域）
+   - step-engineering-features-2.5（BOTTLE BASELINE；mould_04 REVIEW_REQUIRED）
+   - mold-bom-1.7（BOTTLE BASELINE / 2 个零部件）
+   - step-face-features-1.8（BOTTLE COMPLETE；mould_04 REVIEW_REQUIRED）
+   - step-topology-1.2（BOTTLE REVIEW_REQUIRED）
+
+四、我发现的第二个真实缺陷（在本轮修复）
+
+我最初把字典键原样参与摘要，结果 Face 报告写盘后再读回，摘要对不上。原因是
+edge_endpoint_vertex_ids 的键在内存里是整数，写进 JSON 变成字符串，键排序顺序从
+数值序变成字典序。我在 stable_payload() 里统一把键转成字符串，写盘前后摘要一致。
+我为此新增了"整数键字典写盘后内容摘要仍稳定"的回归测试。
+
+五、复现证据
+
+同一 BOTTLE 阶段 3 连续两次重生成：
+   - 第一次 content_sha256 = fe10a42767dde9794253c55bc11b62b38309b1ad4d45427a41dfe3f7b00485cf，elapsed_seconds = 46.1423
+   - 第二次 content_sha256 = fe10a42767dde9794253c55bc11b62b38309b1ad4d45427a41dfe3f7b00485cf，elapsed_seconds = 43.197461
+   - DIGEST_STABLE=True，ELAPSED_CHANGED=True
+
+八份正式 JSON（阶段 3、工程、BOM、Face、拓扑）全部自校验通过，BAD_COUNT=0。
+
+我特别说明：content_sha256 绑定的是"几何内容"，不是某个固定数值。同一源码下同输入两次
+运行摘要完全一致；一旦算法或源码改动、几何内容随之变化，摘要就会合理地变化。例如工作区
+存在并行开发者，我在证明之后它改了阶段 3 的边界投影算法并重新生成了 BOTTLE 阶段 3，
+当前摘要已变为 `8c527370...`，但八份正式 JSON 仍然自校验通过。这正好说明摘要能同时
+区分"内容没变"和"内容真的变了"。
+
+六、验证命令与结果
+
+   - .venv\Scripts\python.exe -B scripts\verify_project.py：status=PASS、exit=0
+   - 全量 pytest：263 passed（我自己的门禁 19:43:05）；随后同一源码树在 19:49:48 的门禁
+     为 PASS、267 passed（含并行开发者新增用例与我的非有限值修复）
+   - compileall：退出码 0
+   - pip check：No broken requirements found
+   - outputs 审计：84 个文件、77 有效、0 损坏、7 跳过（PNG/HTML）、status=PASS
+   - 缓存收口：剩余 0 个缓存目录
+   - 清理 8 个错误顶层重复工程文件，释放 82,929,800 字节
+
+八份正式 JSON 在最终复核时仍全部自校验通过，FORMAL_JSON_BAD_COUNT=0。
+
+七、我保留的限制
+
+content_sha256 只证明"同一输入、同一源码、同一配置"下报告内容可复现，不代表几何识别
+准确率。我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、
+工业 G0/G1/G2、最终封闭分型面、GUI、安装包或生产验收。BOM 的 category_candidates 仍是
+候选，不是最终行业类别或采购规格。

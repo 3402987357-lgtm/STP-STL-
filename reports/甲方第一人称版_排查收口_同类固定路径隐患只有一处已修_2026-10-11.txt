@@ -1,0 +1,51 @@
+排查收口：全库还有没有"测试共用固定输出路径"的同类隐患
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、为什么做这次排查
+上一轮我修掉了 `test_step_repair_sampling.py` 里 8 个测试共用
+`outputs/_probe/` 的问题，但当时明确记了限制："**其它测试文件是否还有同类
+固定路径，我没有改、也没有逐一排查**"。这一轮把范围查全——否则只修了一半。
+
+二、排查结果：同类隐患**只有上一轮那一处**
+
+我把 `tests/` 里所有引用 `outputs` 的行都过了一遍，按性质分成三类：
+
+    【A 同类隐患：并发写修补输出】
+        test_step_repair_sampling.py  —— 8 处（**上一轮已修，改用 tmp_path**）
+
+    【B 只读已有产物做契约校验，不写】
+        test_formal_output_contract.py（读 stage3_regions_v3 / step_engineering /
+                                       bom_bottle 等做契约断言）
+        test_acceptance_face_count.py（读 acceptance_v10/summary.json）
+        test_step_repair_baseline.py（glob 读基准 summary）
+
+    【C 测脚本逻辑 / 写非修补产物】
+        test_cleanup_policy.py（测清理脚本，不写修补输出）
+        test_artifact_audit.py（审计逻辑）
+        test_flowchart.py（写 outputs/flowcharts/）
+        test_desktop_ui.py（default_output_dir="outputs/_probe/ui"）
+
+三、我对 C 类做了实测，不安于"看起来不像"
+
+    pytest tests/test_flowchart.py tests/test_desktop_ui.py
+           tests/test_formal_output_contract.py  ->  **15 passed**（31 秒）
+
+**这三个文件稳定。** 它们虽然也用固定目录，但不与 `repair_step_holes`
+竞争同一路径，且耗时很短（31 秒），并发撞上的概率与代价都远低于 A 类。
+
+四、结论
+
+    **同类隐患只有一处，已修。** 其余引用要么只读、要么不写修补输出，
+    我**没有**对它们做改动——因为改它们属于扩大改动范围，而我没有证据
+    表明它们会出问题（实测 15 passed）。
+
+五、限制（如实）
+
+1. 我是按"引用 outputs 的行"做静态排查 + 对 C 类跑了一次测试。
+   **我没有**做全量 `tests/` 的并发压测（那要十几分钟一轮，且我此前观测到
+   项目自身会并发跑全量自检，会互相污染结果）。
+2. C 类的 `test_desktop_ui.py` 用的是 `outputs/_probe/ui`，与我修掉的
+   `outputs/_probe/tri_test` **同属 `_probe` 目录树**。虽然它不写修补输出，
+   但**理论上**仍可能被"清理 `_probe`"的动作影响。我没有验证这一条。
+3. 本轮**未改任何代码**。

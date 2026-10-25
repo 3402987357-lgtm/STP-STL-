@@ -1,0 +1,64 @@
+我方候选与参考同一文件拒绝记录
+日期：2026-10-06
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方在复核核心检测入口时发现一个真实缺陷：validate_model_pair 只校验文件是否存在、
+扩展名是否合法、大小是否超限，不检查候选文件和参考文件是不是同一个文件。我实测把同一个
+cube.stl 同时当作候选和参考传进 inspect_pair，程序不报错，静默返回 status=review、
+regions=0、missing_region_count=0、extra_region_count=0——也就是把"用户误操作"伪装成
+"这个零件没有缺失区域"的假通过。对甲方来说，这种假通过比直接报错危险得多，因为它看起来
+像一次正常检测。
+
+我在沿着同一条信任边界排查时又发现第二处同根因缺陷：标注清单入口
+validate_annotation_manifest 只用"同一个路径是否出现在不同 split"判断数据泄漏，用
+previous_split != split 做条件。同一条记录里 reference_file 和 candidate_file 写成
+同一个文件时，两次登记落在同一个 split，条件永远不成立，记录被静默接受，清单还会给出
+ready_for_training=True。也就是说，一条"候选就是参考"的无效标注，会被当成可用于训练的
+样本放行。
+
+二、我在检测入口怎么改
+
+我在 src\cad_inspector\io\file_validation.py 的 validate_model_pair 里，用
+os.path.samefile(candidate, reference) 判断候选和参考是否指向同一个文件；是同一个文件就
+抛 InputValidationError，并在消息里说明"把同一个文件同时当作候选和参考只会得到没有缺失
+区域的假通过结果"。我特意只拒绝同一个文件，不拒绝内容相同的两份独立文件：把同一份内容
+复制成两个路径仍然可以正常比较，只有真正指向同一文件（含硬链接、软链接）才拒绝。
+
+三、我在标注清单入口怎么改
+
+我在 src\cad_inspector\learning\annotations.py 读取 reference_file 和 candidate_file
+之后、登记 split 泄漏之前，先用已有的 _normalized_path 做归一化比较（大小写、正反斜杠、
+相对写法都归一）；两者相同就抛 ValueError，说明同一文件同时充当参考和候选只能得到
+"没有缺失区域"的假通过，我拒绝把这种记录当成训练标注。错误信息带上 records 下标，方便
+甲方直接定位是哪一条写错了。
+
+四、我拿到的证据
+
+1. 检测入口：run_inspector.py inspect <cube.stl> <cube.stl> 返回中文错误、退出码 2、
+   没有 traceback；把同一份内容复制到另一个路径仍然正常放行。
+2. 标注入口：把 reference_file=candidate_file 的清单交给
+   run_inspector.py validate-annotations，返回退出码 2、没有 traceback，消息指向
+   records[0]。
+3. 我实测过修复前的行为：同一文件标注清单被 ACCEPTED，ready_for_training=True、
+   path_overlap_count=0；这正是我拒绝它的理由。
+
+五、我执行的验证
+
+1. 本轮定向：.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+   tests\test_annotation_manifest.py tests\test_input_validator.py 为 14 passed。
+   新增 test我方拒绝同一条记录里参考文件和候选文件是同一个文件，覆盖同名拒绝，以及
+   C:\Data\A.STP 对 c:/data/a.stp 的大小写/斜杠归一拒绝。
+2. 上一轮检测入口定向：tests\test_input_validator.py tests\test_pipeline_units.py
+   tests\test_extreme_inputs.py 为 29 passed；新增
+   test我方模型对比拒绝同一个文件当候选和参考，覆盖同文件拒绝与同内容不同路径放行。
+
+六、我保留的限制
+
+1. 我只拒绝"同一个文件"（os.path.samefile）或"归一化路径相同"（ntpath.normcase 语义），
+   不比较两份不同文件的字节内容；内容相同的两份独立文件仍会正常比较。
+2. 归一化按 Windows 语义实现，不等价于跨平台 inode 判断。
+3. 本目录存在并行写入者，以上结论只对当前源码快照成立。
+4. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、工业
+   G0/G1/G2、GUI、安装包或生产验收。

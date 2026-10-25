@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+outputs/*
+data/raw/*
+data/processed/*
+data/synthetic/*.stl
+*.egg-info/
+
+# 我把打包产物排除掉：dist_pyi / build_pyi 是 PyInstaller 的中间与输出目录，
+# dist/cad-inspector.zip 有 500MB，都不该进版本库。
+dist_pyi/
+build_pyi/
+build/
+dist/
+*.zip
+*.sha256.txt
+
+# 我推 GitHub 前补的：data/provided 是甲方素材（单个 STP/STL 有 84–453 MB），
+# 超过 GitHub 单文件 100 MB 硬上限，也不该进公开版本库。
+data/provided/
+# 门禁的锁文件与持锁人信息是本地运行状态，不进版本库。
+reports/.verify_project.lock
+reports/.verify_project.holder

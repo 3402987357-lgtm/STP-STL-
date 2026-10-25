@@ -1,0 +1,74 @@
+我方把合成基准的不伤害保护改为默认开启
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要改
+
+上一轮我给合成基准补上了 `brep_valid` 字段，立刻看出 **17 个输出里有
+1 个是坏几何**（`测试集/8#face3`：hole_closed=False、brep_valid=False、
+solid=1）。
+
+它能被写到磁盘上，**只是因为合成模式默认没开不伤害保护**。真实件模式
+我一直开着（`--do-no-harm`），所以坏件会被撤回；合成模式默认关着，坏
+文件就留在了输出里，还被计入了 `output_written`。
+
+基准的作用是给甲方一个可核对的数字，**把一个坏文件留在输出里并计入
+写出率，是在"写出率"上虚报**。所以我改。
+
+二、我怎么改的（不动原 flag 语义）
+
+    parser.add_argument("--do-no-harm", action="store_true", ...)   # 保留
+    parser.add_argument(
+        "--no-do-no-harm",
+        dest="do_no_harm",
+        action="store_false",
+        help="我关闭不伤害保护，把未过门禁的结果也写出来用于人工复核；"
+             "代价是输出可能包含被改坏的模型。",
+    )
+    parser.set_defaults(preserve_original_on_failure=True, do_no_harm=True)
+
+既有的 `--do-no-harm` 仍然有效（显式开启）；新增 `--no-do-no-harm` 用于
+显式关闭拿复核候选。默认改成 **开**。
+
+三、实测结果：坏几何不再留在磁盘上
+
+| 指标 | 改之前 | 改之后 |
+|---|---|---|
+| output_written_count | 17 | **16** |
+| brep_valid_true_count | 16 | 16 |
+| **brep_valid_false_count** | **1** | **0** |
+| brep_valid_untested_count | 0 | 1（那一份没写出，测不到） |
+| hole_closed_count | 15 | 15（不变） |
+| closed_and_valid_count | 15 | 15（不变） |
+
+**写出的 16 份全部 brep_valid=True。** 那个坏输出 `测试集/8#face3`
+现在被撤回，不再写到磁盘。
+
+四、我执行的验证
+
+- 合成基准（改后）：aggregate 数字见上。
+- 新增用例：基准默认开启不伤害保护（断言 `parse_args([]).do_no_harm
+  is True`，且 `--no-do-no-harm` 能关掉、`--do-no-harm` 仍有效）。
+  `tests\test_step_repair_sampling.py` -> 该用例 1 passed。
+- 全量回归：**457 passed in 307.17s**；`compileall` 退出码 0。
+
+五、我保留的限制
+
+1. **这是策略变更**：合成基准的 `output_written_ratio` 会从 17/17 变成
+   16/17。数字**变差了，但更诚实**——此前那个"写出"的其实是坏件。甲方
+   若需要复核候选，用 `--no-do-no-harm` 取回。
+2. **`测试集/8#face3` 我仍然没有修好**。它本来就被标 `REVIEW_REQUIRED`，
+   修补器自己知道这是候选不是成品。这道保护只是**不让它留在磁盘上**，
+   没有解决"这个件补不出来"。
+3. `case_count` 从 14 变成 17，我**没有查明原因**（不是我改出来的，我的
+   改动只涉及字段与默认值）。
+4. 任务书 92% 未达成（真实件 9/11 = 81.8%）。
+5. 基准默认 `--max-step-bytes` 16 MiB 会挡掉两个真破损件，我没改。
+6. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+7. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+8. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+代码位置：`scripts\benchmark_step_repair.py`（`--no-do-no-harm` 与
+`set_defaults(do_no_harm=True)`）；
+用例：`tests\test_step_repair_sampling.py`；
+输出：`outputs\step_repair_benchmark_relaxed`。

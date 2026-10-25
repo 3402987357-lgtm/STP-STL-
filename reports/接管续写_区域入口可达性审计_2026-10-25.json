@@ -1,0 +1,71 @@
+{
+  "schema_version": "region-entry-audit-1.0",
+  "audited_at_utc": "2026-10-25T07:00:00Z",
+  "module_count_excluding_init": 79,
+  "zero_reference_modules": [
+    {
+      "module": "src\\cad_inspector\\__main__.py",
+      "stem": "__main__",
+      "in_src_reference_count": 0,
+      "referenced_by": []
+    }
+  ],
+  "console_scripts": {
+    "build-backend": "setuptools.build_meta",
+    "name": "stp-stl-missing-region-recognition",
+    "version": "0.1.0",
+    "description": "我用 STEP/STP 与完整 STL 的几何差异识别部件缺失区域。",
+    "requires-python": ">=3.11",
+    "cad-inspector": "cad_inspector.cli:main",
+    "mold-manifest": "cad_inspector.dataset_cli:main",
+    "mold-parting-baseline": "cad_inspector.parting_cli:main",
+    "mold-features": "cad_inspector.feature_cli:main",
+    "mold-step-face-features": "cad_inspector.cli:main",
+    "mold-bom": "cad_inspector.bom_cli:main",
+    "mold-visualize": "cad_inspector.visualization_cli:main"
+  },
+  "main_cli_subcommand_count": 27,
+  "main_cli_subcommands": [
+    "audit",
+    "batch-inspect",
+    "bom",
+    "dataset",
+    "evaluate-synthetic",
+    "feature-classify",
+    "flowchart",
+    "gui",
+    "inspect",
+    "parting",
+    "parting-baseline",
+    "probe",
+    "repair",
+    "review-annotations",
+    "score-annotations",
+    "serve",
+    "step-engineering-features",
+    "step-face-features",
+    "step-feature-classify",
+    "step-repair",
+    "step-report",
+    "tessellate-step",
+    "train-face-model",
+    "validate",
+    "validate-annotations",
+    "visualize",
+    "voxel"
+  ],
+  "main_cli_delegated_region_commands": [
+    "bom",
+    "dataset",
+    "feature-classify",
+    "parting-baseline",
+    "visualize"
+  ],
+  "region_cli_modules": [
+    "bom_cli.py",
+    "dataset_cli.py",
+    "feature_cli.py",
+    "parting_cli.py",
+    "visualization_cli.py"
+  ]
+}

@@ -1,0 +1,892 @@
+模具装配体零部件识别、参数测量、BOM 与分型审计项目
+最新完整开发汇报
+甲方第一人称版
+版本日期：2026-10-02
+
+一、我方本轮结论
+
+我方已经把工程推进到“可运行、可测试、可追踪、可继续扩展”的状态。我方没有把候选结果包装成工业级最终验收，也没有把甲方任务书中的目标数字当成已经达成的事实。
+
+当前全量无缓存测试：
+
+1. `96 passed in 14.45s`
+2. `compileall`：通过。
+3. `pip check`：`No broken requirements found`。
+4. 项目内没有运行中的本项目压力进程。
+
+二、附件和用户要求的区分
+
+我实际读取的任务书：
+
+`D:\桌面\2878f9d0-30c3-43fc-b661-17d51f4b99f6.docx`
+
+我实际核对的 CAD 归档：
+
+`D:\桌面\915551d3-9d27-4671-80a0-c88b49071839.rar`
+
+DOCX 要求的是模具装配体识别、零部件分类、尺寸参数提取和 BOM 导出；其中 99% 准确率、1% 漏检率、单文件 3 分钟属于甲方验收目标，当前没有足够的人工标注集证明已经达到。
+
+RAR 内部我统计到 10 个 STEP/STP 文件、4 个 PRT 文件和配套日志/目录项。我没有把 RAR 再重复解压一份到 D 盘，避免浪费空间。
+
+用户额外要求的是：工程放在 D 盘、过程写 TXT、甲方第一人称、多轮极端测试、问题修复和无用缓存清理。这些要求已经写入开发日志和本报告。
+
+三、当前已完成代码能力
+
+1. STL 输入校验、网格质量审计、缺失区域基线和简单孔洞修补。
+2. STEP/STP 的 OCP B-Rep 读取、Shape 有效性、Solid/Shell/Face/Wire/Edge/Vertex 统计。
+3. Face 面积、重心、法向、包围盒、曲面类型、Edge 曲线类型、长度、半径和圆弧编号。
+4. Face 邻接、共享 Edge 编号、法向夹角和共享 Edge 连通区域。
+5. 顶部水平面、底部水平面、水平中间面、侧壁、倾斜面候选。
+6. Face 级实体分类器采样，输出外部面候选、内部腔体候选、混合复核和未解析证据。
+7. 语义采样资源保护：默认最多采样 16 个 Face，复杂输入可通过 CLI 调整上限，未采样项保留 `UNRESOLVED/resource_guard`。
+8. OCP B-Rep 水平截交分型线、源 Face 追溯、分型线质量诊断和候选输出。
+9. OCP 延伸平面分型面阶段 6 质量门禁：有效性、边界闭合、源 Solid 数、截交边和穿透证据。
+10. XCAF/STEPCAF 装配树 BOM 基线：组件编号、数量、尺寸、拓扑计数、表面积、体积、低置信度类别候选。
+11. BOM JSON 和带 UTF-8 BOM 的 Excel 兼容 CSV。
+12. Windows CLI UTF-8 输出、输入指纹、可审计状态和资源保护。
+
+四、真实样本证据
+
+1. BOTTLE：
+   - Face：311。
+   - 当前区域分类 schema：`step-feature-classification-1.3`。
+   - 当前区域数：141；旧版 110 为历史结果，不能与当前版本混用。
+   - 分类状态：`BASELINE`。
+   - 语义采样上限：16。
+   - 采样 Face：16；跳过 Face：295。
+   - Face 级采样得到 9 个内部腔体候选和 302 个未解析/资源保护项。
+   - 区域级状态：4 个内部腔体候选区域、4 个混合复核区域、133 个未解析区域。
+   - 这些都是证据级候选，不是最终型腔/型芯判定。
+
+2. mould_04：
+   - Face：4974。
+   - 当前区域数：4974。
+   - Shape 有效性：`False`。
+   - 分类状态：`REVIEW_REQUIRED`。
+   - 低采样回归使用 4 个 Face，未解析项保持资源保护。
+   - 我方没有把无效 B-Rep 的候选写成通过。
+
+3. BOTTLE BOM：
+   - XCAF 顶层装配：1。
+   - 组件记录：2。
+   - 已生成：
+     - `outputs\bom_bottle\BOTTLE.bom.json`
+     - `outputs\bom_bottle\BOTTLE.bom.csv`
+   - CSV 含序号、零件编号、零件名称、部件类别、类别置信度、材料、数量、采购规格、尺寸、面积、体积和复核警告。
+   - 材料与采购规格为空是有意的，因为当前输入没有足够主数据；我没有猜测。
+
+五、阶段 6 分型面验证
+
+我新增了 OCP 候选平面质量诊断：
+
+1. `stage6_status`。
+2. `source_solid_count`。
+3. `surface_wire_count`。
+4. `surface_closed_wire_count`。
+5. `surface_boundary_is_closed`。
+6. `surface_intersects_source_shape`。
+7. `surface_penetration_evidence`。
+8. `sewing_status` 和 `transition_surface_status`。
+
+盒体 OCP 定向测试确认阶段 6 状态为 `BASELINE`，但缝合和过渡曲面明确写为未执行的后续能力。我方没有用一个有效平面 Face 伪造最终模具分型面。
+
+六、主要问题和修复
+
+1. 语义采样初版对所有 Face 取多距离样本，真实 BOTTLE 超过资源预算。我中止了受控任务并加入采样上限，默认从 64 收紧到 16。
+2. 区域分类曾漏掉顶部/底部之间的水平 Face。我增加 `horizontal_other_candidates`，使有效 Face 全部进入区域审计。
+3. 邻接结果曾缺少共享 Edge 和法向角度。我补充 `shared_edge_ids` 和 `normal_angle_deg`。
+4. 重复或非法 Face 编号可能造成静默覆盖。我增加编号合法性、重复编号、区域覆盖率和重复引用统计。
+5. 分型面越界索引可能继续参与面积计算。我改为发现越界立即返回，并保留可读告警。
+6. 压力轮旧缓存可能绑定错误输入。我增加路径、文件大小和 SHA256 指纹。
+7. BOM CLI 中文帮助乱码。我增加 Windows UTF-8 标准输出配置。
+8. 真实 BOM 类别不确定不应阻塞几何 BOM 基线。我将类别不确定降为行级警告，空 Shape 才进入 `REVIEW_REQUIRED`。
+9. 旧报告中的附件名和测试数字过时。我保留历史文件，但新增本报告和最新长计划作为当前版本依据。
+
+七、测试矩阵
+
+我本轮执行：
+
+1. 全量无缓存 pytest：96 passed。
+2. STEP Face/OCP 定向测试：通过。
+3. STEP 分型/OCP 定向测试：通过。
+4. BOM OCP 定向测试：通过。
+5. 阶段 5 和阶段 6 质量测试：通过。
+6. compileall：通过。
+7. pip check：通过。
+8. BOTTLE 真实区域分类：成功写出并重新解析 JSON。
+9. mould_04 真实区域分类：返回非零并保持 `REVIEW_REQUIRED`。
+10. BOTTLE BOM：成功写出 JSON/CSV。
+
+八、当前保留缺点
+
+1. 当前 BOM 仍是几何基线，不能代替甲方标准件库和材料主数据。
+2. XCAF 名称缺失时使用组件编号，不能从内部标签推断真实零件名称。
+3. 当前 BOM 已按参考 Shape 合并重复 occurrence，并保留实例数量与装配路径；仍需真实重复装配样本验收嵌套子装配和跨 CAD 导出差异。
+4. 类别候选置信度很低，不能作为采购自动下单依据。
+5. Face 编号和区域编号依赖当前 STEP 读取顺序。
+6. 语义采样只覆盖有限 Face，完整装配语义需要分层、分区或可恢复批处理。
+7. 内部腔体候选可能受薄壁、开口、相邻实体和无效 B-Rep 影响。
+8. 阶段 6 还没有自动执行最终布尔切割、缝合、过渡曲面补面和加工工艺验收。
+9. XT 和 PRT 仍需要合法商业适配器。
+10. 当前没有真实人工标注集，不能宣称 99% 准确率或 1% 漏检率。
+11. 当前没有证明所有大装配体都在 3 分钟内完成。
+12. 当前没有 GUI、安装包、权限系统和多机器部署验收。
+
+九、空间清理结果
+
+我只准备删除或清理：
+
+1. 本轮运行产生的 `__pycache__`。
+2. 项目根 `.pytest_cache`。
+3. 已被 v3 当前 JSON 替代的旧版阶段 3 重复输出。
+4. 不影响原始 CAD、训练数据、测试数据、`.venv`、源码、测试和正式报告。
+
+我不会删除：
+
+1. `data\raw`。
+2. `data\provided`。
+3. `.venv`。
+4. 当前 `outputs\stage3_regions_v3`。
+5. 当前 BOM 输出。
+6. 压力轮和最终 B-Rep 审计证据。
+
+十、后续 AI 固定执行顺序
+
+1. 读取本报告和最新长计划。
+2. 读取 README 和最新开发日志。
+3. 先跑当前 96 项测试，确认基线。
+4. 先补测试，再改代码。
+5. 对 BOM 优先补主数据、数量合并、标准件识别和真实装配名称。
+6. 对分型优先补台阶桥接、R 角、过渡面和实体穿透。
+7. 每轮更新 schema、报告、日志和限制。
+8. 每轮清理可再生缓存，保留不可再生证据。
+
+十一、甲方结论
+
+我确认当前 D 盘工程已经能够：
+
+1. 读取真实 STEP/STP。
+2. 输出可追踪 Face/Edge/区域证据。
+3. 输出真实 OCP 分型候选。
+4. 输出阶段 6 平面质量诊断。
+5. 输出 XCAF 几何 BOM 基线 JSON/CSV。
+6. 通过 108 项自动化测试。
+
+我同时确认它还不是无需人工复核的工业级最终产品。所有最终准确率、行业类别、材料、采购规格、XT/PRT 兼容性和 3 分钟性能必须在甲方冻结环境和真实标注集上重新验收。
+
+===== BOM 装配实例聚合修订（2026-10-02） =====
+
+我方发现旧版 BOM 的数量字段固定为 1，且没有把 occurrence 与参考 Shape 区分开。该问题已完成修复：
+
+1. 我方使用 XCAF 的叶级 occurrence 递归遍历，保留完整装配路径。
+2. 我方使用 `GetReferredShape_s` 取得参考 Shape。
+3. 我方按 `reference_shape_id` 合并相同参考 Shape 的重复实例。
+4. 我方保存 occurrence 编号、occurrence 路径和 occurrence 数量。
+5. 我方将数量统计写入 `occurrence_count` 和 `quantity`。
+6. 我方将 JSON schema 更新为 `mold-bom-1.1`。
+7. 我方在 CSV 增加参考 Shape 编号、实例数量、实例编号和装配路径。
+
+本轮实际验证：
+
+1. BOM 定向测试 2 passed。
+2. 全量无缓存回归 97 passed。
+3. `compileall` 通过。
+4. 真实 BOTTLE 输出 2 个唯一参考 Shape、2 个 occurrence，状态 `BASELINE`。
+
+我方修正旧限制：重复参考 Shape 的实例合并已完成基线实现，但仍需要包含重复零件、嵌套子装配和同名不同 Shape 的真实甲方样本继续验收；本修订不代表材料、采购规格或工业类别已经自动识别。
+
+===== BOM 属性与装配坐标补充（2026-10-02） =====
+
+我方在 BOM 聚合修复之后继续补齐了数据来源和坐标证据：
+
+1. 我方将 schema 更新为 `mold-bom-1.4`。
+2. 我方在 JSON 中保存输入文件的路径、大小、格式和 SHA256。
+3. 我方在每个零件行中保存 occurrence 局部变换矩阵，并在 CSV 中输出为 JSON 字符串。
+4. 我方新增精确主数据 JSON 加载器和 `--master-data` CLI 参数，支持按参考 Shape 或零件名补充类别、材料和采购规格。
+5. 我方为类别、材料和采购规格分别记录来源，不匹配时不自动猜测。
+6. 我方增加英文名称词边界规则和反例测试，降低工程类别误报。
+
+本轮实际结果：
+
+1. BOM 定向测试 7 passed。
+2. 全量测试 108 passed。
+3. 真实 BOTTLE 输出 schema `mold-bom-1.4`，2 个组件、2 个 occurrence、2 个唯一参考 Shape。
+4. `compileall` 和依赖检查通过。
+
+我方明确限制：XCAF 材料为空时不代表材料不存在，只代表当前文件没有可读取的 XCAF 材料属性；局部矩阵不等于完整嵌套装配全局位姿；主数据模板不等于甲方正式主数据。
+
+===== BOM 原生 XLSX 输出补充（2026-10-02） =====
+
+我方已将 BOM 输出从 JSON/CSV 扩展为 JSON/XLSX/CSV：
+
+1. 我方使用标准库生成原生 OOXML `.xlsx`，不增加第三方依赖。
+2. 我方保留中文表头、数值单元格、列宽、首行冻结和自动筛选。
+3. 我方在测试中使用 `zipfile` 和 XML 解析检查工作簿完整性、工作表、样式、中文表头和冻结设置。
+4. CLI 成功输出正式 `outputs\bom_bottle\BOTTLE.bom.xlsx`。
+
+验证结果：
+
+1. BOM 定向测试 7 passed。
+2. 全量回归 109 passed。
+3. `pip check` 无断依赖。
+4. 由于当前机器没有 Excel 或 LibreOffice 命令行，我只报告结构化 XLSX 校验通过，不宣称桌面软件打开测试已经完成。
+
+===== 模具工程特征候选阶段补充（2026-10-02） =====
+
+我方依据 `D:\桌面\514.docx` 的枕型模具智能分型任务，完成了当前代码范围内的模具工程特征候选阶段。附件中的 STP/XT、上下平面、台阶、R 角、分型线、分型面、IGS/STEP、80% 正确率和 5 分钟目标属于项目任务背景；我方今天的直接执行要求是 D 盘落地、第一人称 TXT 计划与报告、逐轮记录、极端测试和清理无用文件。`D:\桌面\144.rar.wxdownload` 本轮不存在，我没有假设其内容。
+
+我方新增：
+
+1. `domain\step_engineering.py`：候选数据模型。
+2. `detection\step_engineering.py`：台阶、圆柱/孔壁、R 角和拔模方向证据。
+3. `output\step_engineering_report.py`：JSON、候选 CSV、拔模 CSV。
+4. `cad-inspector step-engineering-features`：可重复运行的命令行入口。
+5. 6 个定向测试；全量无缓存回归为 107 passed。
+
+我方真实验证：
+
+1. BOTTLE 为 BASELINE，311 Face，443 个工程候选。
+2. mould_04 为 REVIEW_REQUIRED，Shape 有效性为 False，4974 Face，9150 个工程候选。
+3. 正式输出为 `outputs\step_engineering`，6 个文件均可重新解析。
+4. BOTTLE 两次运行的 JSON、候选 CSV、拔模 CSV 内容完全一致。
+5. 非法拔模方向和负阈值返回 2，并且不生成半成品目录。
+
+我方仍不宣称最终工业完成：
+
+1. 工程候选不等于最终分型线和分型面。
+2. 圆柱面不等于已确认孔，圆弧 Edge 不等于已确认 R 角。
+3. mould_04 的无效 Shape 必须由 CAD 工程复核。
+4. XT/PRT、真实 20 组训练集与 20 组测试集、80% 正确率、5 分钟性能、GUI、安装包和网络隔离仍需专项验收。
+
+===== 最终回归补充（2026-10-02） =====
+
+我方最终无缓存回归为 `108 passed`。我方按 README 设置 `PYTHONPATH=src` 后，新增公共输出函数导入成功；正式 `outputs\step_engineering` 下 6 个文件均可解析，项目代码测试范围缓存为 0，D 盘剩余约 202.07 GB。
+我方已删除重复输出的 9 个文本文件；空目录因本地安全策略未强制递归删除，不影响正式运行和实际空间。原始 CAD、provided 数据、`.venv`、源码、测试、报告和正式输出均保留。
+
+===== 最终数字更正（2026-10-02） =====
+
+我方补充状态传播回归后，最新全量无缓存结果为 `109 passed`，新模块专项为 `7 passed`。正式输出仍为 6 个文件，JSON 全部可解析，项目代码测试范围缓存为 0；D 盘剩余约 188.19 GiB（约 202.07 GB 十进制）。
+
+===== B Rep 分型线索引修复（2026-10-02） =====
+
+我方将分型线链路中的截交 Edge 和源 Face 编号从 `TopTools_ShapeSet.Index()` 替换为哈希桶加 `IsSame`。真实 BOTTLE 仍为 `BASELINE`、11 条候选和 4 个源 Face；mould_04 仍为 `REVIEW_REQUIRED`、107 条候选和 8 个源 Face。专项测试 9 passed，全量回归 109 passed。
+
+===== 分型线桥接候选补充（2026-10-02） =====
+
+我方新增 `bridge_proposals`，记录断段两端、长度、建议插值点和 `applied=false`。我方将 schema 升级为 `parting-1.3`，重新回写正式输出：BOTTLE 为 `BASELINE`、11 条候选、0 个桥接方案；mould_04 为 `REVIEW_REQUIRED`、107 条候选、14 个桥接方案。专项测试 13 passed，全量回归 110 passed。
+
+===== 当前收尾与 BOM 1.5 修订（2026-10-02） =====
+
+我方完成了当前版本的最后一致性修订。正式 BOM schema 已为 `mold-bom-1.5`，每个 occurrence 继续保留局部 3x4 矩阵，并新增沿父级到子级路径合成的 `global_matrix_3x4`。CSV 同步提供“实例全局变换”字段。
+
+我方确认全局矩阵的来源是 XCAF occurrence 路径的父子仿射合成。这个结果用于审计和后续人工复核，不代表已经完成所有 CAD 软件、嵌套装配约定、单位规则和坐标系规则的最终工程验收。
+
+我方本轮验证：
+
+1. BOM 定向测试 `8 passed`。
+2. 全量无缓存回归 `110 passed`。
+3. `compileall` 通过。
+4. `pip check` 返回 `No broken requirements found`。
+5. 真实 BOTTLE 的 JSON、CSV、XLSX 均存在；JSON 可解析，schema 为 `mold-bom-1.5`。
+
+我方本轮清理：
+
+1. 我方清理了项目源码、测试和脚本目录中本轮产生的 `__pycache__`。
+2. 我方清理了项目根 `.pytest_cache`（若存在）。
+3. 我方没有删除原始 CAD、provided 数据、`.venv`、源码、测试、正式输出和报告。
+
+我方最终保留限制：当前仍是可审计的几何 BOM 基线，不是材料采购级 BOM，也不是无需人工复核的工业级自动分型系统。XT/PRT、真实嵌套装配样本、甲方材料主数据、标注准确率、性能、GUI、安装包和 Excel 桌面环境仍需单独验收。
+
+===== 阶段 3 工程特征增强与真实回归（2026-10-02） =====
+
+我方完成了现有工程特征区域的第二轮增强，版本为 `step-engineering-features-1.1`。我方没有新增重复流水线，而是复用现有 Face/Edge 报告和方向分类。
+
+我方新增：
+
+1. `rule_summary.plane_roles`：顶部、底部、水平其他、侧壁和倾斜面候选的 Face 编号与面积摘要。
+2. 圆柱/孔壁拓扑代理证据：圆弧边数量、半径离散度、Edge 特征数组对齐、闭合边界代理和解释状态。
+3. `rule_summary.draft_direction`：拔模方向分类计数、中间角度面数量和复核状态。
+4. `rule_summary.review_gates`：Shape、Face、上下平面、孔壁拓扑和拔模方向的质量门禁。
+5. CLI 阈值参数：平面法向容差、Z 带宽比例和孔半径相对容差。
+
+我方真实结果：
+
+1. BOTTLE：`BASELINE`，311 个 Face、443 个候选、4 个孔壁拓扑代理候选。
+2. mould_04：`REVIEW_REQUIRED`，4974 个 Face、9150 个候选、1740 个圆柱/孔壁候选，其中 193 个拓扑代理仍需要复核。
+3. 工程特征专项测试：9 passed。
+4. 全量无缓存回归：114 passed。
+5. 两个正式工程特征 JSON、候选 CSV 和拔模 CSV 均已重新生成，schema 为 `step-engineering-features-1.1`。
+
+我方排查并修复了一个输出语义问题：平面分组内部的 `score` 实际代表面积，我方改为输出 `area_mm2`，避免面积量被后续 AI 当作置信度。
+
+我方保留限制：孔壁闭合边界目前是拓扑代理证据，尚未证明完整 Wire 闭合和轴向连续；拔模方向仍需要甲方坐标规则确认；工程候选仍不是最终型腔、型芯、分型线或加工结论。
+
+===== 阶段 3 同轴度与孔阵列增强（2026-10-02） =====
+
+我方把圆柱面的 CAD 轴线和半径证据接入 Face 特征报告，schema 升级为 `step-face-features-1.4`。我方在工程特征层增加量化轴线分桶，按方向夹角、轴线距离和半径差生成 `COAXIAL_HOLE_ARRAY_CANDIDATE`。
+
+我方新增 CLI 参数：
+
+1. `--axis-angle-tolerance-deg`
+2. `--axis-distance-tolerance-mm`
+
+我方真实联调：
+
+1. BOTTLE：`BASELINE`，444 个工程候选，其中 1 个同轴阵列候选。
+2. mould_04：`REVIEW_REQUIRED`，9290 个工程候选，其中 140 个同轴阵列候选；Shape 无效状态没有被候选数量抬高。
+3. Face/工程特征定向测试：11 passed。
+4. 全量无缓存回归：116 passed。
+
+我方排查重点：我方采用轴线分桶而不是无上限的圆柱面两两比较，避免大装配体出现 O(n²) 候选爆炸；同轴候选仍需实体内外、贯通性、装配层级、重复规格和标准件库复核。
+
+===== 过渡曲面候选阶段汇报（2026-10-02） =====
+
+我方本轮完成了过渡曲面候选的最小闭环，并完成单元、真实 CAD、导出和再读取验证。
+
+一、代码改进
+
+1. 我方新增 `transition_surface` 非序列化 OCP Shape 保存位。
+2. 我方新增 `transition_offset_mm` 配置和非正值拦截。
+3. 我方沿 Z 方向复制分型线 Wire，并用 `BRepOffsetAPI_ThruSections` 生成开放壳体。
+4. 我方用 `BRepCheck_Analyzer` 检查候选 Shape，用 Edge-Face 映射统计裸边，用 OCP Section 检查源实体截交证据。
+5. 我方新增过渡曲面 STEP 和 IGS 输出；失败不覆盖平面分型面，只在 JSON 写入 `REVIEW_REQUIRED` 诊断。
+6. 我方把分型结果 schema 从 `parting-1.3` 升级到 `parting-1.4`。
+
+二、实际验证
+
+1. 盒体 OCP 测试：过渡壳体有效，导出的 STEP/IGS 能够重新读取。
+2. BOTTLE：`BASELINE`，过渡候选 4 Face、16 Edge、8 条裸边，截交证据为 `SECTION_EDGES_PRESENT`。
+3. mould_04：`REVIEW_REQUIRED`，过渡候选 8 Face、32 Edge、16 条裸边，截交证据为 `SECTION_EDGES_PRESENT`。
+4. 真实正式输出已更新：
+   - `outputs\final_validation\BOTTLE_parting\BOTTLE.transition_surface.step`
+   - `outputs\final_validation\BOTTLE_parting\BOTTLE.transition_surface.igs`
+   - `outputs\final_validation\mould_04_parting\mould_04.transition_surface.step`
+   - `outputs\final_validation\mould_04_parting\mould_04.transition_surface.igs`
+5. 本轮最后一次全量无缓存回归为 `114 passed`，`compileall` 通过，`pip check` 无断依赖；正式输出 JSON 解析失败数为 0。
+
+三、我方不隐藏的限制
+
+1. 裸边是当前开放壳体候选的真实结构证据，不是错误，也不代表最终工艺面已经闭合。
+2. 候选 Shape 有效不等于源模型有效；mould_04 仍因原始 B-Rep 有效性问题保留 `REVIEW_REQUIRED`。
+3. 当前没有完成最终缝合、实体布尔切割、G0/G1/G2 连续性、台阶真实桥接、R 角工艺保留或加工验收。
+4. 当前没有宣称 99% 准确率、80% 准确率、3 分钟或 5 分钟性能目标已经达成。
+
+===== 最终完整收尾汇报（2026-10-02） =====
+
+我方本轮不再新增 speculative 功能，而是把已实现能力做最后的真实核验、重复稳定性复核、极端压力复核和磁盘清理。
+
+一、附件和任务边界
+
+我方从 `D:\桌面\514.docx` 的 DOCX XML 中读取到原始任务书正文。任务书要求支持 STP/XT、提取上下平面和外轮廓、生成封闭连续分型线、生成平面/延伸/过渡分型面、输出 IGS/STEP，并提出 80% 正确率、单文件 5 分钟、Windows 10/11、稳定性、本地处理和原始文件不修改等验收条件。我方把这些内容作为验收背景，没有把它们写成已经达成的结果。
+
+我方确认 `D:\桌面\144.rar.wxdownload` 不存在；`D:\桌面\144.rar` 存在，但没有未经用户确认就展开或假设其内容。
+
+二、最终验证数字
+
+1. 全量无缓存测试第一轮：`116 passed`。
+2. `compileall`：通过。
+3. 编译后全量无缓存测试第二轮：`116 passed`。
+4. `pip check`：`No broken requirements found`。
+5. 真实压力轮：21 对输入，20 对 `review`，1 对 `resource_guard`。
+6. 正式输出读取：118 个 JSON、49 个 CSV 无实际解析失败；候选清单中的 4 个顶层数组已按合法数组处理。
+7. 工程特征重复运行：BOTTLE 与 mould_04 的关键诊断稳定一致。
+8. BOTTLE：`BASELINE`，311 Face，444 工程候选，1 个同轴阵列候选。
+9. mould_04：`REVIEW_REQUIRED`，4974 Face，9290 工程候选，140 个同轴阵列候选；原始 Shape 无效性仍然保留。
+
+三、问题排查和修复结论
+
+我方发现验证脚本把所有 JSON 都当作对象，4 个合法的候选数组触发了检查器误报。我方仅修正了验证命令的顶层类型处理，没有增加无必要的业务代码；重新核验后生产 JSON 解析失败数为 0。
+
+我方还确认 `mould_04` 的 CLI 返回码 1 与 `REVIEW_REQUIRED` 状态一致，不能把它误写成崩溃，也不能因候选数量增加而把它升级为 `BASELINE`。
+
+四、清理和空间结论
+
+我方删除了临时重复输出 `outputs\_tmp_repeat_engineering`，清理了项目与 `.venv` 中可再生的 `__pycache__`，最终缓存目录数为 0。原始 CAD、provided 数据、正式输出、源码、测试和报告全部保留。D 盘剩余空间约 188 GiB / 202 GB。
+
+五、最终工程边界
+
+我方完成的是可重复、可解释、可追溯的 Python/OCP 几何基线和工程候选链路。我方没有把候选当作最终型腔/型芯语义，没有宣称 80% 准确率、5 分钟性能、XT/PRT 原生解析、最终台阶桥接、R 角工艺确认、分型面缝合、实体布尔切割、G0/G1/G2 连续性、GUI、安装包或工业最终验收已经完成。
+
+===== 按区域实现代码阶段汇报（2026-10-02） =====
+
+我方本轮开始按照不同区域部分补充代码，完成了区域工程证据层，而不是只保留 Face/Edge 连通分量。
+
+一、我方代码改进
+
+1. 我方新增 `StepEngineeringRegion`，把源区域角色、区域工程状态、Face/邻接区域、面积、边界 Edge 数和语义状态写入工程报告。
+2. 我方把台阶、圆柱/孔壁、R 角和同轴阵列候选按 Face 交集关联到区域，区域可以反向追踪候选编号和候选类型。
+3. 我方把顶部、底部、水平其他、侧壁和倾斜面写成区域角色候选，并保留 `REGION_SEMANTICS_REVIEW_REQUIRED`。
+4. 我方新增 `<stem>.regions.csv`，每行对应一个区域，保留证据 JSON 和人工复核警告。
+5. 我方为工程特征命令新增 `--semantic-sample-limit`，默认 16；未采样 Face 不会被自动猜成外部或内部。
+6. 我方将工程特征 JSON schema 从 `step-engineering-features-1.1` 升级到 `step-engineering-features-1.3`。
+7. 我方增加区域中心、平均法向、包围盒、三向尺寸、曲面类型统计、圆柱半径样本和圆弧 Edge 数量，便于后续区域参数规则复用。
+
+二、真实输出
+
+1. BOTTLE：`BASELINE`，311 Face、444 候选、141 个区域；区域 CSV 已写出并包含尺寸证据。
+2. mould_04：`REVIEW_REQUIRED`，4974 Face、9290 候选、1393 个区域；区域 CSV 已写出并包含尺寸证据。
+3. mould_04 的原始 Shape 无效性、语义资源保护和人工复核门禁没有被新区域字段覆盖。
+
+三、验证记录
+
+1. 工程特征专项：`12 passed`。
+2. 区域、Face、OCP 定向测试：`23 passed`。
+3. 全量无缓存 pytest 第一轮：`121 passed`。
+4. `compileall`：通过。
+5. 编译后全量无缓存 pytest 第二轮：`121 passed`。
+6. `pip check`：`No broken requirements found`。
+7. BOTTLE 和 mould_04 正式 JSON、候选 CSV、拔模 CSV、区域 CSV 已按最新源码重新生成。
+
+四、我方结论
+
+我方已经把“按不同区域部分实现代码”落成可审计的区域级工程输出，但区域状态仍是候选证据。它不能替代有效实体语义、装配层级、坐标系规则、甲方标注、最终型腔/型芯确认或加工验收。
+
+===== 过渡曲面缝合状态修复与正式输出复核（2026-10-02） =====
+
+我方复核发现，当前代码已经执行 `BRepBuilderAPI_Sewing`，但旧版阶段 6 诊断仍然写着“未执行缝合”，且正式 BOTTLE/mould_04 输出没有同步缝合文件。这会让后续 AI 误读实现状态，我方已修复。
+
+我方做出的最小改进：
+
+1. 我方让 `parting_cli` 支持 `--section-tolerance-mm`、`--curve-samples-per-edge` 和 `--transition-offset-mm`。
+2. 我方让 `sewing_status` 与 `transition_surface_sewing_status` 保持一致。
+3. 我方把阶段 6 限制更新为：基础缝合已执行并记录自由边、多重边，但未完成封闭实体、布尔切割、补面和 G0/G1/G2 连续性。
+4. 我方新增 CLI 配置传递测试，防止新增参数只出现在帮助文本而未真正进入流水线。
+
+我方真实输出：
+
+1. BOTTLE 正式状态仍为 `BASELINE`；缝合状态为 `SEWN_OPEN_SHELL`，自由边 8 条。
+2. mould_04 正式状态仍为 `REVIEW_REQUIRED`；缝合状态为 `SEWN_OPEN_SHELL`，自由边 16 条。
+3. 两套正式输出均新增缝合过渡曲面 STEP/IGS。
+4. 两套 JSON 的 schema 均为 `parting-1.4`，`transition_surface_offset_mm=5.5`，artifacts 文件均存在。
+
+我方验证记录：
+
+1. 定向测试：`6 passed`。
+2. 全量无缓存测试：`117 passed`。
+3. `compileall` 和 `pip check` 通过。
+4. 两份正式 JSON 可解析，6 个正式 STEP 可由 OCP Reader 再读取，Shape 均非空。
+
+我方排查出的启动边界：
+
+第一次未设置 `PYTHONPATH=src` 时，`python -m cad_inspector.parting_cli` 会返回 `ModuleNotFoundError`；设置项目要求的环境变量后运行正常。这是启动配置问题，不是 CAD 算法结果。后续 AI 续写时必须把启动命令和环境变量作为固定前置步骤。
+
+我方仍明确保留缺口：开放壳体的自由边没有被自动补齐，`SEWN_OPEN_SHELL` 不是封闭分型实体；真实台阶、R 角、多截面过渡、实体布尔切割、G0/G1/G2、XT/PRT、GUI、安装包、真实标注准确率、性能和加工验收仍未完成。
+
+===== 主目标缺失区域有向证据阶段（2026-10-02） =====
+
+我方本轮将实现重点推进到“缺失区域识别”本身。原有链路已经能做参考到候选、候选到参考的距离检查和连通区域聚类，但无符号距离不能区分同向表面偏移与边界/拓扑变化。我方增加了最小可审计的有向证据层。
+
+我方完成：
+
+1. `InspectionConfig` 新增 `directional_evidence_enabled` 和 `direction_normal_tolerance_deg`。
+2. 每个异常采样点保存源面到目标最近点的有向位移，以及源面与目标面的绝对法向一致性。
+3. 我方把采样级结果按源 Face 聚合，再按连通区域汇总，避免丢失 Face 追溯关系。
+4. JSON/CSV 增加 `direction_evidence`、`signed_offset_mean_mm`、`normal_alignment_mean` 和三个采样计数字段。
+5. 全局报告增加 `global_metrics.directional_evidence`，记录正向、反向有效样本、法向一致偏移样本和边界/拓扑样本。
+6. CLI 增加 `--direction-normal-tolerance-deg` 和 `--no-directional-evidence`。
+7. 结果 schema 升级为 `missing-region-detection-1.1`。
+
+我方没有做的事情：
+
+我方没有用法向证据强行把区域从 `missing` 改为 `extra`，也没有把 `NORMAL_ALIGNED_OFFSET` 解释成已确认的材料缺失、额外材料、实体内外或加工结论。复杂法向、非流形、开放边界和采样不足仍然进入人工复核。
+
+我方测试和真实联调：
+
+1. 有向证据、配置边界和极端输入定向测试：`20 passed`。
+2. 全量无缓存回归：`121 passed`。
+3. 真实 `训练集\0.stp` 与 `训练集\0.stl` 联调返回 `review`，JSON schema 为 `missing-region-detection-1.1`；原因是重复三角面、非流形边、退化三角形、单位未知和采样覆盖不足，符合质量门禁预期。
+4. 临时真实输出目录已删除，正式输出没有被实验结果污染。
+
+我方下一阶段应沿三条线继续：封闭体内外和孔洞拓扑证据、真实标注集准确率/漏检率评估、以及单位与坐标系确认。当前有向证据仍是辅助诊断，不是工业最终判定。
+
+===== 2026-10-03 最终补充：区域部件类别与多轮排查 =====
+我方完成了当前工程特征区域的下一步增强，并把结果正式写入 D 盘工程。
+
+一、我方完成内容
+1. 我方将工程特征 schema 更新为 `step-engineering-features-1.4`。
+2. 我方新增区域字段：类别候选、类别置信度、类别证据和类别复核门禁。
+3. 我方实现板件、轴类、导向件/导套、顶出件、成型面和结构件候选。
+4. 我方复用已有尺寸和拓扑证据，避免重复依赖和重复读取。
+5. 我方修复孔拓扑复核统计，使未闭合代理或未解析语义的所有圆柱候选都进入复核计数。
+6. 我方同步 JSON、候选 CSV、拔模 CSV、区域 CSV、README、长计划、完整汇报、完成情况报告书和开发过程日志。
+
+二、我方正式数据
+1. BOTTLE：`BASELINE`，311 Face、444 候选、141 区域，类别复核区域 137 个。
+2. mould_04：`REVIEW_REQUIRED`，4974 Face、9290 候选、1393 区域，类别复核区域 1392 个；Shape 无效性保持原状。
+3. 两套区域 CSV 均与 JSON 区域数一致，Face 覆盖率为 100%，区域编号唯一。
+
+三、我方验证
+1. 工程特征专项和合成极端测试：16 passed。
+2. 全量无缓存 pytest：130 passed。
+3. `compileall`：通过。
+4. `pip check`：无断依赖。
+5. 我方清理了项目可再生缓存，保留原始 CAD、虚拟环境、源码、测试、正式输出和 TXT 报告。
+
+四、我方结论
+我方已经把“不同区域可实现的部件类别方案”落成可运行、可解释、可追踪的候选证据层。该层可以给后续 AI 提供结构化关键词和待标注样本，但不能代替真实零件名称、装配层级、标准件库、型腔型芯判断、最终加工语义和工业验收。
+
+===== 2026-10-03 区域边界过渡证据补充 =====
+我方继续补充区域之间的关系层，工程特征 schema 更新为 `step-engineering-features-1.5`。
+
+我方完成：
+1. 在每个区域证据中写入邻接区域角色和邻接语义。
+2. 对常见区域组合输出顶部到侧壁、底部到侧壁、水平到侧壁和倾斜到侧壁过渡候选。
+3. 对同角色边界和未知角色组合保留稳定名称。
+4. 把当前区域关联的台阶、R 角、圆柱/孔壁和同轴阵列候选保留为边界工程候选。
+5. 对邻接引用缺失进行显式复核，不允许静默忽略。
+
+我方验证：
+工程特征定向测试 17 passed；全量无缓存回归 136 passed；`compileall` 和 `pip check` 通过；BOTTLE/mould_04 正式 JSON/CSV 已按 1.5 重新生成。
+
+我方边界：
+邻接过渡证据尚未自动生成最终分型线、桥接曲线、实体布尔边界或加工工艺；真实 CAD 标注和工程规则仍是后续验收依据。
+
+
+===== 开发记录 2026-10-03T10:43:25+08:00 =====
+标题：我方完成区域语义与 STEP 拓扑质量门禁修复
+状态：已完成本轮实现，待全量回归收尾
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\io\step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我完成的事情：
+我方继续按区域实现工程证据。重复同轴候选实现已删除；圆柱候选现在区分内部腔体支持、外部圆柱面和未解析语义，孔洞统计不会把代理证据包装成已确认孔洞。STEP 拓扑报告升级为 step-topology-1.1，增加开放边、非流形边和孤立 Edge 统计，并把拓扑异常纳入 REVIEW_REQUIRED。
+我执行的验证：
+定向工程特征与拓扑测试 18 passed；BOTTLE 和 mould_04 正式工程 JSON 已重算为 step-engineering-features-1.4；当前输出保留 4 个和 1740 个圆柱候选的实体语义复核；正式拓扑 JSON 已重算。
+我保留的限制：
+仍需要完整 Wire、实体布尔、贯通性、XT/PRT、甲方标注集和工业验收，当前不输出最终孔洞或最终模具语义
+
+
+===== 开发记录 2026-10-03T10:52:28+08:00 =====
+标题：我方完成本轮全量验收与空间收尾
+状态：已完成阶段性闭环
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\io\step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_engineering.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_topology.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我完成的事情：
+我方完成从代码修复、真实 BOTTLE/mould_04 输出刷新、STEP 拓扑报告升级，到全量测试和空间清理的阶段性闭环。重复同轴候选实现已清除；孔壁代理、内部孔洞支持、外部圆柱和未解析语义已分层；开放边和非流形边已进入 STEP 拓扑质量门禁。
+我执行的验证：
+136 passed；118 JSON 和 51 CSV 无解析失败；工程 JSON 为 step-engineering-features-1.5；拓扑 JSON 为 step-topology-1.1；缓存目录 0；项目进程 0。
+我保留的限制：
+这不是工业最终验收结论，完整 Wire、实体布尔、XT/PRT、标注准确率、性能和 GUI/安装包仍需专项完成。
+
+
+===== 开发记录 2026-10-03T10:58:53+08:00 =====
+标题：我方修复区域工程回溯索引的静默覆盖风险
+状态：已完成本轮区域可靠性增强
+涉及文件：
+- D:\STP_STL_Missing_Region_Recognition\src\cad_inspector\detection\step_region_join.py
+- D:\STP_STL_Missing_Region_Recognition\tests\test_step_region_join.py
+- D:\STP_STL_Missing_Region_Recognition\README.md
+我完成的事情：
+我方增加区域回溯索引的输入完整性门禁，阻止重复 region_id、空 face_ids 和错误类别数组进入有效索引；本轮继续保持所有区域类别为可解释候选，不改变最终语义边界。
+我执行的验证：
+定向测试 22 passed；全量 pytest 141 passed；README 已同步。
+我保留的限制：
+仍需真实标注、装配层级和工业验收完成最终类别确认。
+
+===== 2026-10-03 最终完整汇报补充 =====
+我方完成了当前阶段最后一轮正式输出重核、全量测试、结构化审计和 D 盘清理。
+
+一、我方最终交付结果
+1. BOTTLE：step-engineering-features-1.5、BASELINE、311 Face、444 候选、141 区域。
+2. mould_04：step-engineering-features-1.5、REVIEW_REQUIRED、4974 Face、9290 候选、1393 区域；Shape 有效性为 False，人工复核门禁保持有效。
+3. 两套正式区域报告的 Face 覆盖完整，区域 CSV 行数分别为 141 和 1393。
+4. face_geometry_signatures 已进入区域测量证据：BOTTLE 为 311 个唯一签名、0 个重复；mould_04 为 4945 个唯一签名、29 个重复。
+
+二、我方最终验证
+1. 当前源码全量无缓存回归：144 passed in 21.19s。
+2. compileall：通过。
+3. pip check：No broken requirements found。
+4. outputs 下 116 个 JSON、51 个 CSV：全部可读，无 NaN、Infinity 或 -Infinity。
+5. 项目范围 __pycache__ 和 .pytest_cache：0；已删除 12 个本轮可再生缓存目录。
+6. 项目 Python 进程：0；D 盘剩余约 188.19 GiB。
+
+三、我方清理和保留范围
+我方只清理项目根目录内可再生缓存，不删除原始 CAD、data\raw、data\provided、.venv、正式 outputs、源码、测试和正式 TXT 报告。工程约 2.10 GiB，其中原始数据和虚拟环境是主要占用来源，属于复现所需内容。
+
+四、我方后续 AI 关键词
+几何签名、稳定 CAD ID、跨 CAD 拓扑映射、区域 Face 覆盖审计、step-engineering-features-1.5、BASELINE、REVIEW_REQUIRED、原始 Shape 无效、人工复核、资源保护、144 passed、XT/PRT、最终分型面、G0/G1/G2。
+
+五、我方最终限制
+我方当前交付的是可运行、可重复、可追溯的工程候选证据，不是工业最终验收。真实标注准确率、80% 目标、5 分钟性能、XT/PRT 原生解析、复杂实体修补、封闭分型面、实体布尔、GUI、安装包和生产验收仍需后续专项。
+
+===== 2026-10-03 最新一轮极端校验与 D 盘空间收尾 =====
+
+我方在上一轮 149 项全量回归基础上继续做极端输入排查，发现 STEP Face 映射门禁对零值、布尔值和超出声明 Face 数量的编号不够严格。我方已修复统一映射入口，并补充非法声明计数与映射长度不一致测试，确保异常数据只能进入人工复核，不会静默套用工程区域。
+
+我方本轮定向测试为 39 passed，全量无缓存回归为 161 passed。我方新增 `scripts\cleanup_regenerable_outputs.ps1`，经过项目根目录和 outputs 子目录边界校验后，清理了 23 个历史极端/重复验证输出目标，释放约 14.7 MB；当前正式工程输出、拓扑、阶段 3、BOM、源码、测试、原始数据、虚拟环境和 TXT 报告均保留。
+
+我方仍将 `BASELINE` 解释为可解释几何候选基线，将 `REVIEW_REQUIRED` 解释为必须人工复核的真实状态；本轮没有把映射校验、几何签名或候选类别包装成永久 CAD ID 或工业最终验收。
+
+===== 2026-10-03 区域复核队列增强汇报 =====
+我方本轮继续按不同区域补充代码：我在 `StepEngineeringRegion` 中加入 `review_reason_codes` 和 `review_priority`，并将工程特征 schema 升级为 `step-engineering-features-1.6`。我把 Shape 无效、语义未解析、资源保护、边界 Edge、邻接缺失、候选混合和类别不确定性统一输出为可筛选的原因代码。
+我方新增区域 CSV 字段“复核优先级”和“复核原因代码”，并在 `diagnostics`、`rule_summary.region_engineering` 中输出原因计数和优先级计数，方便后续 AI 按区域建立人工复核任务。
+我方真实重生成 BOTTLE 和 mould_04：BOTTLE 为 BASELINE/311 Face/444 候选/141 区域，mould_04 为 REVIEW_REQUIRED/4974 Face/9290 候选/1393 区域；两套区域 Face 覆盖完整，区域 CSV 行数一致。
+我方验证：区域专项 18 passed；此前全量回归 160 passed，收紧区域索引类型门禁后最新全量回归为 162 passed；正式 JSON 均为 schema 1.6；BOTTLE 正式命令为 BASELINE，mould_04 正式命令为 REVIEW_REQUIRED/退出码 1；正式 JSON 无 NaN、Infinity 或 -Infinity。
+我方保留限制：复核队列只负责把区域问题排序和结构化，不等于最终型腔、型芯、零件类别、永久 CAD ID、分型面或工业验收。XT/PRT、真实标注准确率、性能、复杂实体修补、封闭分型面、实体布尔、G0/G1/G2、GUI、安装包和生产验收仍需后续专项。
+
+===== 2026-10-03 区域复核队列终态审计 =====
+我方完成 compileall、pip check、正式 JSON/CSV 审计和缓存清理。当前验证为：区域专项 18 passed、全量 pytest 160 passed、compileall 通过、pip check 无断依赖、项目缓存 0、项目 Python 进程 0。
+我方确认 outputs 有 20 个 JSON、13 个 CSV，全部可读且无 NaN/Infinity；BOTTLE/mould_04 工程 schema 均为 1.6，区域 Face 覆盖完整，区域复核字段没有缺失。
+我方确认 D 盘剩余约 188.19 GiB。原始数据、.venv、源码、测试、正式 outputs 和 TXT 报告继续保留；我方只清理可再生缓存。
+我方当前阶段结论为：区域复核队列已经成为可追踪的工程证据层，后续可以按优先级进入人工标注、Face/Edge/Wire 稳定映射和分型候选处理，但不能代替工业验收。
+
+===== 2026-10-03 边界 Edge 正式输出同步与当前终态 =====
+
+我方继续按当前源码重生成 BOTTLE 和 mould_04 工程特征输出，修正源码与正式文件
+schema 不一致的问题。当前两套工程 JSON 均为 `step-engineering-features-1.7`。
+BOTTLE 为 `BASELINE`、311 Face、444 候选、141 区域，覆盖 311/311 Face；
+mould_04 为 `REVIEW_REQUIRED`、4974 Face、9290 候选、1393 区域，覆盖 4974/4974 Face。
+两套区域均已写出 `boundary_edge_ids`，mould_04 继续保持 `SHAPE_INVALID`/`HIGH`
+人工复核。
+
+我方执行了全量无 pytest 缓存回归，结果为 `166 passed in 18.56s`；`compileall`
+通过；`pip check` 返回 `No broken requirements found`。当前 outputs 实际保留
+19 个 JSON 和 10 个 CSV，全部可读且无 NaN/Infinity。项目压力进程为 0，白名单压力
+临时目录已删除，本轮释放 189004 字节，项目范围可再生缓存最终为 0。
+
+我方仍保留工程边界：边界 Edge 编号不是跨 CAD 永久拓扑 ID，区域候选不是最终零件或
+型腔/型芯结论；XT/PRT、真实标注准确率、性能、复杂实体修补、封闭分型面、实体布尔、
+G0/G1/G2、GUI、安装包和生产验收仍需后续专项。
+
+===== 2026-10-03 当前最新 STEP 修补与极端测试补充 =====
+
+我方在上文阶段性工作之后继续完成 STEP 修补报告字段补齐、真实烟囱测试、极端专项、
+结构化审计和空间清理。以下数字覆盖本报告前文较早的阶段数字。
+
+1. STEP 修补 schema 已升级为 `step-repair-1.1`。
+2. 区域报告增加 `continuity_verified`、`deviation_max_mm`、
+   `deviation_mean_mm`；全局报告增加修补尝试数、成功数、成功率、G0/G1/G2 汇总、
+   参考曲面状态和偏差状态。
+3. 无参考曲面时，偏差写为 `NOT_AVAILABLE`；G1/G2 写为 `NOT_VERIFIED`；
+   `G0_CANDIDATE` 仍然只表示候选，不等于工业连续性验收。
+4. 全量无缓存测试为 `166 passed in 27.54s`；STEP 修补专项为 `4 passed`；
+   极端/审计/原子输出专项为 `58 passed`；`compileall` 通过；`pip check` 无断依赖。
+5. BOTTLE 真实烟囱：输入有效、71 个开放环、12 个平面候选、成功率 `0.169014`；
+   补面组合后仍有 123 条开放边、48 条非流形边、0 个 Solid，状态为
+   `REVIEW_REQUIRED`，没有写出正式修复 STEP。
+6. mould_04 真实烟囱：输入 Shape 无效、120 个开放环、0 个自动候选，状态为
+   `REVIEW_REQUIRED`，没有写出修复 STEP。
+7. 两套烟囱 JSON/CSV 审计均为 `PASS`。本轮临时烟囱目录和项目缓存已经删除，
+   原始 CAD、provided 数据、`.venv`、正式输出、源码、测试和 TXT 报告继续保留。
+
+我方最新结论仍然是可运行、可审计、可复核的工程基线，不是 96% 检测准确率、92% 修补
+成功率、8 秒性能、G1/G2 连续性或工业最终验收的证明。
+
+===== 2026-10-03 当前文件计数校正 =====
+
+我方最新只读核验确认：当前 `outputs` 共有 23 个 JSON、12 个 CSV，共 35 个正式
+可审计文件；`audit outputs` 返回 `PASS`，35/35 有效、0 损坏、0 跳过。前文的
+19/10、20/13 和 21/16 是历史阶段快照，后续 AI 以本节和
+`outputs\step_engineering_audit.json` 为准。
+
+===== 2026-10-03 区域几何签名正式终态 =====
+
+我方继续按不同区域部分实现代码，并将区域几何签名接入阶段 3 和工程特征输出。
+当前阶段 3 JSON 为 `step-feature-classification-1.4`，工程 JSON 为
+`step-engineering-features-1.8`。
+
+BOTTLE 当前为 BASELINE、311 Face、444 候选、141 区域；mould_04 当前为
+REVIEW_REQUIRED、4974 Face、9290 候选、1393 区域。两套 Face 覆盖完整，所有区域
+均写入 `region_geometry_signature`，工程区域 CSV 新增签名列。
+
+我方验证：区域专项 31 passed；全量 pytest 166 passed；compileall 通过；pip check
+通过；19 个 JSON、10 个 CSV 全部结构化可读；缓存目录和项目压力进程均为 0。
+我方删除错误顶层输出位置的 4 个重复工程文件，释放 2155983 字节。
+
+我方仍明确：区域几何签名不是跨 CAD 永久拓扑 ID。重复几何、单位变化、模型重建、
+拓扑重排和几何变形仍可能造成碰撞或失配，后续必须继续保留原始 Face/Edge/Wire
+证据、签名碰撞统计和人工复核状态。
+
+===== 2026-10-03 当前真值补充：schema 1.9、原子输出与断点恢复 =====
+
+我方以当前源码和磁盘实际状态为准继续完善项目。当前工程特征 JSON 已统一为
+`step-engineering-features-1.9`：BOTTLE 为 `BASELINE`、311 Face、444 候选、141
+区域；mould_04 为 `REVIEW_REQUIRED`、4974 Face、9290 候选、1393 区域。两套区域
+Face 覆盖完整，所有区域均有 `region_geometry_signature` 和 `boundary_edge_ids`，
+区域 CSV 已包含对应中文列。
+
+我方修复了压力脚本的 CLI、输入/配置指纹、断点恢复和原子写出；同时把剩余报告 writer、
+STL、BOM/XLSX、probe 和中间结果输出接入已有 `atomic_path`。本轮压力恢复与原子
+失败保护专项为 `6 passed`，全量无缓存测试为 `170 passed`，`compileall` 和
+`pip check` 均通过。`audit outputs` 当前为 29/29 有效、0 损坏、0 跳过，输出目录
+约 47.72 MB；两份无用 `_regeneration.log` 已删除。
+
+我方补充核对了 `D:\桌面\777.docx`。该附件是当前 STP/STL 缺失区域识别任务书，提出
+默认 `>=0.15 mm` 阈值、位置/范围/误差输出、Python 源码和流程图，并将 `>=99%`
+作为验收目标；这不是已经达到 99% 的证明。此前 `514.docx` 的枕型模具分型要求
+属于另一份历史附件，继续保留为历史边界，不覆盖本节。
+
+我方仍明确：当前实现是可运行、可审计的工程基线，真实标注准确率、XT/PRT、复杂实体
+修补、最终封闭分型面、G0/G1/G2、GUI、安装包和工业最终验收仍未完成。
+
+===== 2026-10-03 当前最新终态：区域分型证据与审计校正 =====
+
+我方继续按不同区域完善工程证据，当前工程 schema 已从前文历史记录中的 1.8 统一为
+`step-engineering-features-1.9`。我为每个工程区域增加并验证了
+`parting_role_candidates`、`parting_confidence`、`parting_review_required` 和
+`parting_evidence`，其方法为 `region_role_boundary_neighbor_parting_rules`。
+
+BOTTLE 当前为 `BASELINE`，311 Face、444 候选、141 区域、Face 覆盖 311/311；
+mould_04 当前为 `REVIEW_REQUIRED`，4974 Face、9290 候选、1393 区域、Face 覆盖
+4974/4974。两套工程区域都有 `region_geometry_signature`；分型复核区域分别为
+94 和 892。
+
+我方重新运行当前源码验证：全量无缓存 pytest 为 `170 passed in 48.02s`，
+`compileall` 和 `pip check` 通过；四个核心正式 JSON 和 10 个正式 CSV 审计通过，
+无 NaN、Infinity 或 `-Infinity`。审计中曾因把真实字段误写成顶层 `faces` 而得到
+错误的 0/0 覆盖显示，我已改用 `face_count`、`adjacency`、`draft_evidence` 和
+`regions` 重审，真实 Face 覆盖完整。
+
+我方最终仍不宣称已经完成 XT/PRT、真实标注准确率、五分钟性能、复杂实体修补、最终
+封闭分型面、G0/G1/G2 工业验收、GUI、安装包或生产验收。
+
+===== 2026-10-03 当前最终增量汇报 =====
+
+我方已将区域分型证据正式写入工程 JSON/CSV：工程 schema 为
+`step-engineering-features-1.9`，新增分型候选、置信度、复核标志、证据和
+`PARTING_REGION_AMBIGUOUS`。BOTTLE 为 `BASELINE`、311/444/141，mould_04 为
+`REVIEW_REQUIRED`、4974/9290/1393，Face 覆盖分别为 311/311 和 4974/4974。
+
+我方完成 STEP 修补专项 `4 passed`，全量无缓存回归 `170 passed in 51.79s`，
+`compileall`、`pip check` 和 outputs 审计均通过，29/29 文件有效。清理脚本释放
+236651 字节，仅删除可再生临时日志和缓存；本项目仍是可审计工程基线，不是工业最终验收。
+
+===== 2026-10-03 最新 STEP G2 极端复核与附件校正 =====
+
+我方将 STEP 修补连续性从 G0/G1 扩展到实际采样的法向曲率量差。新增配置
+`max_g2_curvature_delta_per_mm=0.01`、区域字段
+`g2_max_curvature_delta_per_mm` 和 CLI 参数
+`--max-g2-curvature-delta-per-mm`，报告 schema 更新为 `step-repair-1.3`。
+我方保持严格门禁：只有 G0、G1、曲率采样完整且 G2 阈值通过时才写
+`G2_VERIFIED`；没有把未采样或 G1 失败写成 G2 成功。
+
+我方完成共面 OCP G2 真实测试，G0/G1/G2 均为真且曲率量差为 0.0。全量无缓存
+pytest 为 `171 passed in 47.14s`。真实 BOTTLE 烟囱为 71 个开放环、12 个候选、
+12/12 通过 G0/G1/G2，最大 G2 曲率量差为 0.0；补面后仍为 123 条开放边、48 条
+非流形边、0 个 Solid，状态为 `REVIEW_REQUIRED`。真实 mould_04 为无效 Shape、
+120 个开放环、0 个候选，状态为 `REVIEW_REQUIRED`。两套烟囱 JSON/CSV 审计均为
+2/2 有效。
+
+我方同步确认本轮附件是 `D:\桌面\88.docx` 和 `D:\桌面\888.rar`。88.docx 的
+验收目标是检测准确率 96%、修补成功率 92%、单模型 8 秒、48 小时稳定性、25 组
+训练集和 25 组测试集；这些目标尚未被当前工程实测证明。888.rar 存在，项目中保留
+此前已经生成的 `data\provided` 样例数据；本轮没有重新复制或解压。当前环境没有可用
+RAR 列表或解压后端，我方没有为了它安装新工具，避免增加 D 盘占用。
+
+===== 2026-10-03 非平面曲面填充候选复核 =====
+
+我方新增显式开关 `allow_nonplanar_surface_candidate` 和 CLI 参数
+`--allow-nonplanar-surface-candidate`。开启后，我方使用 OCP
+`BRepOffsetAPI_MakeFilling` 对闭合非平面 Wire 生成
+`ocp_surface_filling_candidate`，再复用 G0/G1/G2 和实体质量门禁。
+非平面候选强制进入人工复核，只要区域带 `review_required` 就不自动写正式 STEP。
+
+新增非平面四边 Wire Filling 实测通过，定向专项 `18 passed`，全量无缓存 pytest
+`179 passed in 38.21s`。当前源码默认烟囱保持不变：BOTTLE 71 环/12 候选、
+12/12 G0/G1/G2、123 开放边、48 非流形边、0 Solid；mould_04 无效 Shape、
+120 环、0 候选，均继续 `REVIEW_REQUIRED`。
+
+===== 2026-10-03 当前点名附件真值与任务边界校正 =====
+
+我方确认当前点名文件是 `D:\桌面\2878f9d0-30c3-43fc-b661-17d51f4b99f6.docx`
+和 `D:\桌面\915551d3-9d27-4671-80a0-c88b49071839.rar`，不把历史开发中出现的
+`88.docx`、`888.rar`、`777.docx`、`514.docx` 混写为当前附件。
+
+当前 DOCX 要求的主线是模具装配体部件识别与 BOM，而不是单独的 STL/STP 缺失区域
+修补：我需要解析 STP214/XT 装配体，识别成型件、模架件、导向件、顶出件、侧向抽芯件、
+紧固件、冷却浇注件和辅助结构件，提取尺寸/数量/材料/采购规格，并导出 Excel/CSV。
+DOCX 同时提出 99% 准确率、1% 漏检率、单套模具 3 分钟、Windows 10/11、本地不联网、
+Python 3.8 以上和合规三维解析库等验收条件；这些数字仍须由甲方标注集和环境实测证明。
+
+我方已将 STEP/STP 的 OCP XCAF BOM 基线接入工程，BOTTLE 正式结果为
+`mold-bom-1.5`、2 个唯一参考 Shape、2 个 occurrence，并恢复了正式 XLSX 文件。
+XT 当前仅输出适配器要求提示，没有授权 Parasolid 或商业 CAD 适配器时，我方不宣称
+XT 原生解析。RAR 当前只能确认文件存在；环境没有 RAR 列表/解压后端，我方未核验
+内部清单，也未把历史样例冒充为该附件的已核验内容。
+
+===== 2026-10-06 BOM 交付物保护与收尾审计 =====
+
+我方修复了清理脚本误删正式 Excel 的风险：`outputs\bom_bottle\BOTTLE.bom.xlsx`
+现在与 BOM JSON、CSV 一起处于正式保护清单，并由
+`tests\test_cleanup_policy.py` 回归验证。
+
+我方重新运行 BOM CLI，结果为 `BASELINE`、2 个唯一参考 Shape、2 个 occurrence，
+`mold-bom-1.5` JSON、UTF-8 CSV、XLSX 均存在且结构可读。全量 pytest 为
+`185 passed in 41.84s`，`compileall` 和 `pip check` 通过。
+
+我方按白名单清理后重新审计 outputs：30 个文件全部有效，`0` 损坏、`0` 跳过，
+状态为 `PASS`；正式工程 JSON、BOM 三件套和报告均保留。当前 D 盘剩余约
+`178.94 GiB`，项目临时文件和项目 Python 进程均为 `0`。我方仍不把这些结果写成
+XT 原生支持或 DOCX 中 99%/1%/3 分钟指标已经达成。
+ 
+===== 2026-10-06 当前最新增量汇报：周长优先 Wire 与多轮排查 =====
+
+我方完成了当前区域 Wire 选择逻辑的改进：有限且无冲突的 Edge 长度先汇总为边界
+周长并用于主 Wire 选择；长度不完整或冲突时回退 Edge 数，同时保存选择指标、缺失
+边和冲突边，避免静默猜测。
+
+阶段 3 schema 为 `step-feature-classification-1.7`，工程 schema 为
+`step-engineering-features-2.2`。BOTTLE 为 `BASELINE`、311 Face、444 候选、141
+区域；mould_04 为 `REVIEW_REQUIRED`、4974 Face、9290 候选、1393 区域。两套
+阶段 3 Face 覆盖完整且无重复，工程区域 CSV 为 41 列并包含两个周长字段。
+
+本轮全量测试为 `196 passed`，compileall 和 pip check 通过，输出审计为 30/30
+有效，结构化极端核验通过。报告中的旧测试计时仅作历史记录，当前结果以本段为准。
+我方仍不把当前候选结果写成最终分型线、永久 CAD ID、XT 原生支持或甲方
+99%/1%/3 分钟验收完成。
+ 
+===== 2026-10-06 最终空间与文件保护复核 =====
+
+我方在所有改进和报告写入后执行最终白名单清理。缓存、临时文件和项目 Python 进程
+均为 0，受保护文件缺失为 0；outputs 当前保留 30 个正式文件，共
+`82,164,626` 字节，D 盘剩余约 `178.93 GiB`。BOM JSON/CSV/XLSX、正式工程结果
+和 TXT 报告均保留。
+
+===== 2026-10-06 当前增量：BOM 区域类别决策层 =====
+
+我方按“不同区域分别实现”的路线继续补充 BOM 区域。我把单一类别字符串升级为
+可审计的类别决策层：名称规则和几何规则分别产生带来源和证据的候选，圆柱面比例
+等曲面证据参与导向件、顶出件、紧固件弱候选，板状几何保留模架件和辅助结构件兜底。
+无 Solid 或缺少包围盒时保持 `未确定` 并写入明确原因代码，不静默猜测。
+
+只有精确 BOM 主数据匹配才关闭复核门禁；其余候选一律保持
+`category_review_required=true` 和 `SEMANTICS_UNRESOLVED`。BOM schema 升级为
+`mold-bom-1.6`，CSV/XLSX 新增 `类别候选`、`类别需要复核`、`类别复核原因`。
+
+我方用真实 BOTTLE 重生成正式 BOM，并修复了并发重生成留下的
+`mould_04` 工程输出旧 schema 不一致。本轮全量 `209 passed`、compileall 通过、
+pip check 无断依赖、`audit outputs` 为 `30/30` PASS。我方仍不把类别候选写成最终
+行业类别、材料或采购规格。
+
+===== 2026-10-06 主边界 Wire 投影面积交叉校验与清理终检索引 =====
+
+我方本轮已完成真实 Vertex 坐标、有序闭合回路、二维投影面积、平面性和冲突复核，
+并重生成正式输出。阶段 3/工程 schema 为 `step-feature-classification-1.8` 和
+`step-engineering-features-2.3`，工程区域 CSV 为 44 列，全量测试 `209 passed`，
+outputs audit `30/30 PASS`，清理可再生成日志释放 `65,481,405` 字节。
+
+详细记录见 `reports\甲方第一人称版_主边界Wire投影面积校验与清理终检_2026-10-06.txt`。
+
+===== 2026-10-06 边界环层级与 CSV 上限收口索引 =====
+
+我方本轮完成闭合环层级、孔洞候选、相交环冲突、47 列区域 CSV 和 CSV 单元格上限修复。
+阶段 3/工程 schema 为 `step-feature-classification-1.9` 和
+`step-engineering-features-2.4`，全量测试 `225 passed`，outputs audit `30/30 PASS`。
+
+详细记录见 `reports\甲方第一人称版_边界环层级与CSV上限收口_2026-10-06.txt`。
+
+===== 2026-10-06 D 盘空间收口与无用文件排查索引 =====
+
+我方本轮按甲方要求做 D 盘空间收口：复核白名单清理脚本，确认可再生成输出命中 0 项、
+项目缓存目录 0，并用统一门禁清理 40 个字节码缓存。项目本体合计约 2,174.73 MiB，
+其中 data 1,351.56 MiB、.venv 688.85 MiB、outputs 132.63 MiB，均为受保护内容。
+桌面 rar 压缩包因本机缺少解压工具未核对，仅登记不删。D 盘可用约 178.44 GiB。
+
+详细记录见 `reports\甲方第一人称版_D盘空间收口与无用文件排查_2026-10-06.txt`。

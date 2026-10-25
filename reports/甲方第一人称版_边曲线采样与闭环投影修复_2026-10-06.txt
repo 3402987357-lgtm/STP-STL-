@@ -1,0 +1,118 @@
+我方第一人称版边曲线采样与闭环投影修复
+记录日期：2026-10-06
+
+一、本轮目标
+
+我方继续按区域推进，集中修掉一个已经在正式输出里暴露出来的真实缺陷：
+阶段 3 有大量区域算不出主边界 Wire 的投影面积，环关系只能写
+`UNRESOLVED_RELATION`。我先量了现状，再决定怎么改。
+
+二、我方先量到的真实问题
+
+1. BOTTLE（141 区域）
+   - 主边界投影状态：`INSUFFICIENT_POINTS` 1 个。
+   - 环关系：`UNRESOLVED_RELATION` 1 个。
+   - 组件级投影：`INSUFFICIENT_POINTS` 1 个。
+2. mould_04（1393 区域）
+   - 主边界投影状态：`INSUFFICIENT_POINTS` 669 个。
+   - 环关系：`UNRESOLVED_RELATION` 642 个。
+   - 组件级投影：`INSUFFICIENT_POINTS` 1470 个。
+   - 环角色：`UNAVAILABLE` 697 个区域。
+3. 根因：我原来只拿 Edge 的两个 Vertex 端点当折线。STEP 里整圆常常是
+   “只有一个 Vertex 的闭合 Edge”，圆环常常是“两段半圆弧共用两个 Vertex”。
+   这两种情况端点折线只有 1 到 2 个点，既拼不成多边形，投影面积也只能是 0，
+   所以被我标成 `INSUFFICIENT_POINTS` 或 `UNORDERED_COMPONENT`。
+
+三、我方怎么改
+
+1. 新增边曲线采样：`io\step_faces.py` 里新增 `_edge_polyline_points_mm`，
+   用 `BRepAdaptor_Curve` 按参数均匀取样；直线只取两个端点，其余曲线取 16 段。
+   16 段把整圆折线的面积误差压到约 2.5%，比 8 段的 10% 更接近真实圆面积。
+2. 改成按需采样：一开始我为整模型每条 Edge 都取样，实测 BOTTLE 全模型有
+   `85643` 次 Edge 出现、`84942` 个编号，取样把 `inspect` 拖慢约 40 秒。
+   我改成在报告上挂一个带缓存的 `edge_polyline_sampler` 回调，只有真正落在
+   区域边界上的 Edge 才会被取样。BOTTLE 只有 `415` 条唯一边界 Edge，
+   mould_04 只有 `4819` 条，取样量下降两个数量级。
+3. 新增闭环点列拼接：`detection\step_features.py` 里新增
+   `_ordered_loop_points_3d`，按共享 Vertex 把每条边折线按方向首尾相接，
+   拼成一条闭合三维点列；采样缺失时仍回退到原来的 Vertex 端点逻辑。
+4. 投影证据升级：`_wire_projection_evidence` 现在优先用采样点，
+   并新增 `point_source` 字段，明确写出这条证据是
+   `edge_curve_sampling` 还是 `vertex_endpoints`。
+5. 环关系升级：`_loop_relation_evidence` 也改用采样点列做包含、相交、接触判断。
+6. 性能护栏：采样点变多后，环两两判定明显变慢。我加了两处**精确**前置判断，
+   不改变任何判定结果：
+   - `_polygon_pair_relation` 先用包围盒排除一定不相交的环，直接返回 `DISJOINT`；
+   - `_polygon_containment` 先判断点是否落在外部多边形包围盒之外，
+     落在外面就一定在外部，不再做逐边射线求交。
+   实测 BOTTLE 的 `classify` 从 `19.3` 秒回落到 `9.95` 秒。
+
+四、本轮修复后的正式输出
+
+1. BOTTLE（141 区域，`step-feature-classification-1.10`）
+   - 主边界投影：`COMPUTED` 61、`NON_PLANAR_CANDIDATE` 29、`UNAVAILABLE` 51，
+     `INSUFFICIENT_POINTS` 归零。
+   - 环关系：85 个单环、4 个嵌套环、1 个相交环、51 个无闭合环，
+     `UNRESOLVED_RELATION` 归零。
+   - 环角色：85 个隔离环、1 个外环、4 个带孔外环、51 个不可用。
+   - 组件级投影：`COMPUTED` 72、`NON_PLANAR_CANDIDATE` 29、`NOT_CLOSED` 48，
+     `INSUFFICIENT_POINTS` 归零；其中 101 条组件证据来自 `edge_curve_sampling`。
+2. mould_04（1393 区域，`step-feature-classification-1.10`）
+   - 主边界投影：`COMPUTED` 946、`NON_PLANAR_CANDIDATE` 420、`UNAVAILABLE` 27，
+     `INSUFFICIENT_POINTS` 从 669 归零。
+   - 环关系：657 个单环、320 个嵌套环、262 个多独立环、75 个接触环、
+     52 个相交环、27 个无闭合环，合计正好 1393；
+     `UNRESOLVED_RELATION` 从 642 归零。
+   - 环角色：657 个隔离环、385 个外环、324 个带孔外环、
+     `UNAVAILABLE` 从 697 降到 27。
+   - 组件级投影：`COMPUTED` 1924、`NON_PLANAR_CANDIDATE` 570、`NOT_CLOSED` 4，
+     `INSUFFICIENT_POINTS` 从 1470 归零；2494 条组件证据来自 `edge_curve_sampling`。
+3. 我方同时重生成了 BOTTLE 与 mould_04 的工程输出（`step-engineering-features-2.5`）
+   和区域 CSV，保持阶段 3、工程、Face、BOM 四套正式输出 schema 一致。
+
+五、我方顺带确认的一件事
+
+我方发现 BOTTLE 那条原来记为 `TOUCHING_LOOPS` 的区域，采样后变成
+`INTERSECTING_LOOPS`。我复核了该区域（region 85，`side_wall_region`，两个环，
+其中一个环本身是 `NON_PLANAR_CANDIDATE`）：这是采样点更密以后投影多边形真实相交，
+不是我的包围盒优化引入的误判——两处前置判断都只排除“一定不相交”和
+“一定在包围盒之外”的情况，不会改变原本就能判定的结果。
+
+六、我方验证
+
+1. 统一门禁 `python -B scripts\verify_project.py` 返回 `status=PASS`、退出码 0：
+   - `pytest`：`278 passed in 93.06s`
+   - `compileall`：退出码 0
+   - `pip check`：`No broken requirements found.`
+   - `outputs_audit`：`117/124` 有效、0 损坏、7 跳过（PNG/HTML）、`PASS`
+   - `cache_cleanup`：剩余 0 个缓存目录
+2. 本轮新增回归测试：
+   - 两段圆弧共用两个 Vertex 的闭环，采样后投影成 16 边形、面积
+     `306.14674587548704 mm²`；
+   - 单条只有一个 Vertex 的整圆闭合边，采样后同样投影成非零面积；
+   - 采样缺失时仍回退到 Vertex 端点并保持 `INSUFFICIENT_POINTS`；
+   - 真实圆柱体 STEP 端到端：圆面区域主边界投影状态为 `COMPUTED`，
+     面积与精确圆面积相对误差小于 3%。
+3. 我方实测阶段 3 耗时：BOTTLE 约 `102.5` 秒、mould_04 约 `194.4` 秒；
+   其中绝大部分是 STEP 文件解析（BOTTLE 的 47 MB STEP 本身解析就要百秒级），
+   不是本轮新增的采样逻辑。
+
+七、当前限制
+
+1. 采样折线仍是弦近似，不是 NURBS 精确求交；`NON_PLANAR_CANDIDATE`
+   说明该闭合环本身不共面，投影面积只是候选证据。
+2. 环层级、孔洞候选和相交/接触判断都是二维投影关系，不是最终实体布尔运算，
+   也不是封闭实体验证。
+3. 本轮没有修改任何 schema 版本号：新增的 `point_source` 是可选证据字段，
+   正式输出结构与 1.10/2.5 保持兼容。
+4. 我方仍不宣称甲方真实标注准确率、XT/PRT 原生解析、工业 G0/G1/G2、
+   最终封闭分型面、GUI、安装包或生产验收。
+
+八、交接关键词
+
+`_edge_polyline_points_mm`、`edge_polyline_sampler`、`_ordered_loop_points_3d`、
+`_collect_boundary_polylines`、`point_source`、`edge_curve_sampling`、
+`_EDGE_CURVE_SEGMENTS=16`、`INSUFFICIENT_POINTS 归零`、
+`UNRESOLVED_RELATION 642→0`、`UNAVAILABLE 角色 697→27`、
+`278 passed`、`117/124 有效`、`step-feature-classification-1.10`、
+`step-engineering-features-2.5`。

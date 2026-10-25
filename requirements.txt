@@ -1,0 +1,29 @@
+# 我先用 NumPy 支撑不依赖大型三维库的核心基线。
+numpy>=1.26
+scipy>=1.13
+
+# 我后续启用这些能力时再安装对应依赖。
+trimesh>=4.0
+rtree>=1.3
+open3d>=0.18
+cadquery-ocp==8.0.1.0.0
+pydantic>=2.0
+pytest>=8.0
+
+# 我把深度学习作为第二阶段，不让它阻塞第一版几何算法。
+# 不写进必需依赖的原因：torch 体积大，且只被 learning 区域的增强用到，
+# 缺它时几何基线、BOM、分型、修补、批处理全部照常可用。
+# 我已在本机装上 torch==2.14.1+cpu 供面级增强使用。
+# torch
+# torchvision
+# pytorch3d
+
+# 我把 HTTP 服务与桌面界面也作为可选能力：
+# fastapi + uvicorn 只被 `serve` 用到，tkinter 随 Python 自带，
+# 缺 fastapi 时只是起不了服务，其余命令不受影响。
+# fastapi
+# uvicorn
+
+# 我把打包工具也钉住版本：PyInstaller 6.22.3 是我实测能在这个
+# Python 3.12 + cadquery-ocp 8.0.1.0.0 组合下成功产出可执行文件的版本。
+pyinstaller==6.22.3

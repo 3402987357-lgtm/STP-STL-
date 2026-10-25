@@ -1,0 +1,68 @@
+我方把坏面定位能力落地成产品诊断功能：只报不修，端到端无回归
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、这次落了什么（真的改了代码，并且验证过）
+
+前面我用临时脚本证明了"逐个面跑 `BRepCheck_Analyzer(face).IsValid()`"能
+精确定位坏面（21 件普查：3 个件各 1 个坏面，病因同构）。但那个能力只在
+脚本里，**产品里没有**。这一轮把它做成产品功能。
+
+改动在 `src/cad_inspector/repair/step_hole.py`：
+
+1. `_topology_snapshot` 加**可选**参数 `analyzer_type`（默认 None）；
+   - 不传 -> 完全跳过，**不产生任何额外开销、不改变任何现有行为**；
+   - 传了 -> 逐面统计，输出 `invalid_face_count` 与 `first_invalid_face_id`。
+2. `repair_step_holes` 的输入快照**传入** `BRepCheck_Analyzer`，让诊断带上
+   坏面信息；
+3. 在 warnings 里**报出来但不修**。
+
+二、我为什么做成"可选"而不是默认全开
+
+逐面跑有效性检查是**额外开销**，而 `_topology_snapshot` 的三个现有调用点
+都不需要它。做成可选后：不传就零开销、行为不变，**不破坏现有调用与测试**。
+
+三、我为什么**只报不修**（这点写进了代码注释和 warning 文案）
+
+我实测过修它的后果，三个件一致：
+
+    训练集/1   端到端 status 不变；环数 44 -> 76（变糟）
+    测试集/2   端到端 status 不变；环数  9 -> 13（变糟）
+    训练集/4   端到端 status 不变；环数  0 ->  0（无变化）
+
+**修坏面不改变端到端 status，且会引入新的自由边。** 所以我只把它报给甲方，
+把"要不要修"的决定权留给甲方。
+
+四、验证（**带对照**，避免"见谁都报"被当成"报对了"）
+
+    【单元测试】tests/test_step_repair_sampling.py + test_step_repair_ocp.py
+        **36 passed**
+
+    【能力验证】直接调 _topology_snapshot
+        不传 analyzer_type -> counts **不含**新字段（行为不变），face_count=730
+        传 analyzer_type   -> invalid_face_count=1、first_invalid_face_id=633
+
+    【产品接入验证】跑 repair_step_holes
+        训练集/1：invalid_face_count=1、first_invalid_face_id=633
+          warnings 含："我逐面体检后发现 1 个坏面，第一个是第 633 个面…"
+        测试集/1（普查已知**无**坏面）：invalid_face_count=0
+          **不出现**该 warning   <- **对照成立**
+
+    【端到端回归】全量真实破损基准（默认参数）
+        7/11 = 0.636364，与改动前基线**完全一致**
+        SUCCESS 7 / REVIEW_REQUIRED 3 / NO_ACTION 1
+
+五、给甲方的实际效果
+
+以前：诊断只说"我发现输入 STEP BRep 有效性检查未通过"——**定位不到面**。
+现在：多一条"我逐面体检后发现 N 个坏面，第一个是第 X 个面；这类面通常带
+重合顶点与零长边…"——甲方可以**直接跳到第 X 个面**去看。
+
+六、我保留的限制
+
+1. **坏面仍未修**，且我的建议是**不修**（三件证据一致：无收益且变糟）。
+2. 这个诊断**默认只在输入快照处开启**；其余两个 `_topology_snapshot`
+   调用点没开（保持零开销）。
+3. 我**没有**为这个功能新增单元测试（现有的 36 个覆盖了不破坏，但没有
+   专门断言"坏面被报出来"）。这是测试缺口。
+4. BRep 无效的具体错误分类仍未拿到。

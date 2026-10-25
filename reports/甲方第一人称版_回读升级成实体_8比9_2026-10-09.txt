@@ -1,0 +1,103 @@
+我方回读升级成实体记录（补成封闭实体 7/9 -> 8/9 = 89%）
+日期：2026-10-09
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我上一轮留下的未解点
+
+上一轮补成封闭实体到了 7/9（78%），只剩 `测试集/2` 一个件是"缝已合到
+0.0228 mm、文件有效、但 solids=0"。我此前连续多轮**没查明**原因，而且
+已确认 OCP 的 Python 绑定拿不到 BRepCheck 状态枚举，走常规诊断查不出来。
+
+这一轮我换了思路——不再查 BRepCheck，直接看输出文件里 Shell 的实际
+构造——**找到了原因并修好了。**
+
+二、决定性发现：内存上失败，回读后成功
+
+我先看重读后的输出文件：
+
+    重读: valid=True
+    faces=142 edges=963 shells=1 solids=0
+    自由边=25 合计=0.220137
+    shell1: faces=142  MakeSolid done=True valid=True
+
+**那个 Shell 单独拿出来调 MakeSolid 是 done=True 且 valid=True。**
+也就是说这个件明明能升成实体，却一直以 Shell 形式写出。
+
+然后我对比内存形状：
+
+    input_topo:  shell_count=1 solid_count=0
+    output_topo: shell_count=1 solid_count=0
+
+我第一版把升级放在**写出之前**（在内存形状上调 MakeSolid），结果是
+**没触发成功**——基准里 `测试集/2` 仍是 solid=0。
+
+于是我做了关键对比：同一个 Shell，**在内存上调 MakeSolid 失败、把写出
+文件读回来再调就成功**。结论是**写出/回读自带一次规范化**（会拆开共享
+边、重建拓扑），把它变成可升级的形状。这一步只能在文件上做。
+
+三、修法：写出 -> 回读 -> 升级 -> 重写
+
+    _write_step_atomic(output_shape, ...)      # 第一次写出
+    -> _upgrade_written_step_to_solid(...)     # 回读 + 升级 + 重写
+
+`_upgrade_written_step_to_solid` 做的事：
+
+1. 回读写出的 STEP，拿到规范化后的形状
+2. `_upgrade_shells_to_solid`：无 Solid 且有 Shell 时逐个调 MakeSolid，
+   **只有 IsValid() 通过才采用**；多 Shell 时合成 Compound
+3. 成功才重写；失败返回 None，**保留第一次写出的文件，不会丢结果**
+
+四、实测结果：补成封闭实体 7/9 -> **8/9 = 89%**
+
+| 件 | Solid | 缝总长 前→后 | closed | brep_valid |
+|---|---|---|---|---|
+| 测试集/1 | 1 | 3.5010→0.0105 | **True** | True |
+| 测试集/2 | **1**（原 0） | 1.6138→0.0248 | **True**（原 False） | True |
+| 测试集/4 | 1 | 4.1484→0.0246 | True | True |
+| 测试集/5 | 1 | 4.4133→0.0104 | True | True |
+| 测试集/6 | 1 | 1.3756→无 | True | True |
+| 测试集/7 | 1 | 2.1217→0.0014 | True | True |
+| 训练集/7 | 1 | 12.5544→0.0204 | True | True |
+| 训练集/8 | 1 | 9.2468→0.0115 | True | True |
+| 训练集/4 | - | 0.0112→未动 | False | None |
+
+**9 个件：8 个补成封闭实体（89%）、1 个本来就封闭我不动它。
+8 个写出的文件全部 brep_valid=True，没有一份是坏的。**
+
+五、我执行的验证
+
+- 新增用例：回读升级能把缝已合的 Shell 变成 Solid（测试集/2 的输出必须
+  是 Solid 且 `IsValid()`，且必须以**文件重读**为准而非内存快照）。
+  `tests\test_step_repair_sampling.py` -> 21 passed。
+- 全量回归：`400 passed in 229.39s`；`compileall` 退出码 0。
+- 合成基准对照轮：14/14 = 100%，未退化。
+
+六、我保留的限制（不能写成达标）
+
+1. **任务书 92% 仍未达成**，当前 89%（差 3 个百分点）。而且这 9 个只是
+   全部 25 个件中纳入修补的一部分——**另有 16 个件因 boundary=0 被跳过，
+   未纳入统计**。若按全部 25 个件算，比例远低于 89%。
+2. `训练集/4` 是"本来就封闭、我不动它"。它 `closed=False` 只是因为
+   **我主动选择不输出**（它输入缝总长仅 0.0112 mm）。若甲方要求"每个
+   件都出一份文件"，需要改成原样复制输入。
+3. **三角化补面仍然默认关闭**（`allow_triangulated_boundary_candidate
+   = False`）。89% 这个数字是在打开它、且打开曲面候选的前提下取得的。
+   三角化只保证贴合边界、**不保证与相邻面相切**，且我只验证了凸环，
+   **凹环可能产生落在环外的三角形，未验证**。
+4. 回读升级会让每个件**多一轮 STEP 写出与回读**，耗时增加。我只测了
+   9 个真实件，没有系统测它对大件（142 面以上、上千边）的耗时影响。
+5. 多 support 的 MakeFilling **段错误没有根治**——三角化路径绕开了它，
+   但曲面填充候选仍在用它。
+6. `测试集/2` 的缝是 0.0248 mm（上一轮 0.0228），**略微变大**了 0.002
+   mm。我判断这是回读重写引入的规范化差异，不是退化（它现在成了实体，
+   净改善），但我**没有单独验证**这 0.002 mm 的来源。
+7. 有效性保护只在 `do_no_harm=True` 时生效。
+8. 缝容差上限已扩到 50x（2.5 mm），几何正确性未验证。
+9. 无一例 G1/G2；三角化补面同样无相切保证。
+10. 任务书"单模型 8 秒"：整条流水线历史中位 107 s，仍未达标。
+
+代码位置：`src\cad_inspector\repair\step_hole.py`
+（`_upgrade_shells_to_solid`、`_upgrade_written_step_to_solid`、
+写出后的回读升级钩子）；
+用例：`tests\test_step_repair_sampling.py`；
+输出：`outputs\step_repair_real_damaged`、`outputs\step_repair_benchmark_relaxed`。

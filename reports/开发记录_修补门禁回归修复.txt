@@ -1,0 +1,56 @@
+# 我方修复 STEP 修补门禁的两处回归
+
+## 我修了什么
+
+### 1. max_hole_area_mm2 被无条件复位绕过，面积门禁形同虚设
+
+`step_hole.py` 在补面成功后会把 `analysis["repairable"]` 无条件置回 True。
+这个复位的本意是对的：非平面环在建面之前就被判 False，
+后来三角化/曲面候选把洞补上了，status 成了 CANDIDATE，
+但 repairable 还挂着 False，于是整份已封闭的输出被否决不写出
+（实测 测试集/1 region 2 就是这样）。
+
+但"无条件"让安全门一起失效了。`max_hole_area_mm2`、环过大、
+未闭合这类判 False 的含义是**补了会有害**，
+与"我没能力补"不是一回事。实测后果：
+`RepairConfig(max_hole_area_mm2=10.0)` 配上去补 100 mm² 的洞，
+结果 status 是 SUCCESS、文件照常写出 —— 门禁等于没配。
+
+改法：新增 `repairable_blocked_by_planarity_only` 标记，
+只有"平面度是唯一否决原因"时才允许复位。
+这样非平面环补成功后仍能复位，安全门则一律保留。
+
+### 2. loop_gap_mm 字段漏出 CSV 列定义，step-repair 命令直接退出码 2
+
+区域记录新增了 `loop_gap_mm`（环自身的缝长，是"还有没有实质孔洞"
+的唯一判据），但 `write_step_repair_csv` 的 fields 里没有这一列，
+`DictWriter` 抛 `dict contains fields not in fieldnames`，
+被 CLI 兜底成退出码 2。整条 step-repair 命令不可用。
+
+改法：把 `loop_gap_mm` 补进 CSV 列定义，放在 warnings 之前。
+
+### 3. 顺带补齐两处测试与新参数不匹配
+
+`_analyze_wire` 与 `_audit_patch_continuity` 新增了必填的
+OCP 类型参数，两处测试没有跟进，直接 TypeError。
+已按生产调用方的传法补齐（`curve_type`/`topods_type`/`compound_type`
+/`explorer_type`/`face_type`）。
+
+## 我为什么这么改
+
+这两处都是"补面能力增强"的改动顺手打开了缺口：
+一处让安全配置静默失效，一处让命令整体不可用。
+它们都不会被"有没有补出面"这类正向断言发现 ——
+只有反向断言（"配了上限就该拒绝""命令该返回 0"）能抓到。
+
+## 验证
+
+`pytest tests` 401 passed。其中：
+- `test我方超过面积门禁的_STEP孔洞只进入复核` 恢复通过
+- `test我方_STEP修补命令写出JSON和CSV` 恢复通过
+
+## 我没做的
+
+我没有改"环级 review 不再否决整份输出"这个新语义本身，
+它是有意为之（实测 89% 那批结果因它退化成 0 个写出）。
+我只修了它顺带打开的两个口子。

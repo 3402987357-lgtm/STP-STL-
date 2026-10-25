@@ -1,0 +1,80 @@
+我方 none 配准模式写死零残差修复记录
+日期：2026-10-07
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方在复核配准模块时发现本项目最严重的一处假通过。
+
+src\cad_inspector\registration\rigid.py 的 align_mesh 在
+registration_mode='none' 分支里，把残差写死成：
+
+  residuals=np.zeros(len(candidate.vertices))
+
+于是无论两个模型错位得多离谱，配准质量一律报 quality=good、平均残差 0.0。
+
+我用一个最小对照实测确认：把参考立方体的顶点整体乘 2.5 当候选，
+mode=none 仍然返回 quality=good、mean_residual_mm=0.0000；
+同样的输入换 centroid / pca / icp 三种模式，都正确报出 bad
+（mean 约 1.299）。也就是说只有 none 这一条路径在说谎。
+
+二、这个缺陷为什么严重
+
+none 的语义是"输入已经在同一坐标系、不需要我做变换"，
+不是"输入一定已经对齐"。写死零残差等于无条件宣称配准完美。
+
+而 detection 层整条结论链都依赖 registration.quality：
+
+1. _confidence 用 registration_quality 给置信度打折；
+2. _make_region 里 quality != good 会给区域挂"建议人工复核"；
+3. detect_missing_regions 的状态判定里，quality == bad 会把 fail 降级成 review。
+
+所以这个谎会一路传导：甲方拿到的是"配准 good + 检出缺失区域"，
+而真实情况可能只是两个模型没对齐。这不是漏报一个区域，
+是让整套结论的可信度标识失效。
+
+三、我方怎么改
+
+我把 none 分支改成实测残差，其它语义一律不动
+（仍返回未变换的 candidate、scale=1、恒等旋转、恒等平移）：
+
+  residuals = _vertex_to_vertex_residuals(candidate, reference)
+  result = _make_result(mode="none", rotation=np.eye(3),
+                        translation=np.zeros(3), scale=1.0,
+                        residuals=residuals)
+
+_vertex_to_vertex_residuals 是 centroid/pca/icp 三个模式共用的同一函数，
+所以 none 与其它模式的残差口径完全一致，不会引入新的不一致。
+
+四、我执行的验证
+
+修复前后对照（参考立方体，mode=none）：
+
+  identical    修复前 good/0.0000  修复后 good、p95 < 1e-8     （必须保持）
+  translated   修复前 good/0.0000  修复后 warning、mean 0.3742  （改对）
+  scaled 2.5   修复前 good/0.0000  修复后 bad、mean 1.6828      （改对）
+
+我新增 test我方none模式实测残差而不是写死零，从两个方向锁住：
+"完全一致必须仍是 good" 与 "缩放 2.5 倍必须被看出来"。
+
+命令与结果：
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_registration_sampling_hardening.py
+-> 8 passed
+
+定向回归（bidirectional / pipeline_units / extreme_cases /
+adaptive_threshold / learning_evaluation / real_pair_stress）
+-> 72 passed
+
+全量回归 -> 314 passed in 29.45s
+
+五、我保留的限制
+
+1. 我只改残差实测，不改"none 不做变换"的语义，也不改 detection 层逻辑。
+2. none 模式下残差用顶点最近邻度量，与其余三个模式口径一致；
+   它衡量的是"两个点集差多少"，不是"工业级配准精度"。
+3. 本轮机器内存紧张（物理内存约 1GB 可用、CPU 负载 73%），
+   结论以单进程全量 314 passed 为准。
+4. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、
+   XT/PRT 原生解析、工业 G0/G1/G2、GUI、安装包或生产验收。

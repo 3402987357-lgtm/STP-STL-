@@ -1,0 +1,128 @@
+我方走通 visualize --regions 路径并核对 feature-classify 输出
+日期：2026-10-10
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我上一轮欠的两件事
+
+上一轮我说：
+
+> 下一步去把欠的两件补上：`visualize --regions` 那条路径，以及
+> feature-classify 输出内容的正确性核对。
+
+这一轮两件都做了。**这轮我没有改任何代码**，只做核对与验证。
+
+二、visualize --regions 路径：通了，regions 从 0 变成 9
+
+我上一轮跑 visualize 时是 `regions=0`（没传 `--regions`），区域标注
+那条路径从没走过。这一轮我先跑 `step-repair` 产出真实修补报告，再喂给
+visualize：
+
+    step-repair 测试集/2.stp  ->  2.step-repair.json（repaired_regions: 9）
+    visualize --before 2.stp --after 2.repaired.step \
+              --regions 2.step-repair.json --regions-kind step-repair
+    -> [COMPLETE] 我方完成可视化：regions=9
+
+**核对一致性**：报告里 `repaired_regions` 是 9 个，visualize 报 `regions=9`
+——数字对得上，说明区域真的从报告里读出来了、不是凭空生成的。
+
+产出文件都有实质体积，不是空文件：
+
+    comparison_before_after.png        272672 bytes
+    region_classification_candidate.png 45241 bytes
+    visualization.html                425734 bytes
+    visualization.json                  3648 bytes
+
+三、核对中发现一处容易被误读的地方（我没改它）
+
+`测试集/2` 的修补报告：
+
+    整体 status = SUCCESS
+    output_shape_is_valid = True
+    但区域级：8 个 MANUAL_REVIEW_REQUIRED + 1 个 CANDIDATE
+              8 个 repair_method='none' + 1 个 ocp_fitted_plane_face
+              8 个 NOT_VERIFIED + 1 个 G0_VERIFIED
+    warnings 里自己写着：
+      "我发现补面后仍有开放边界，当前 STP 只能作为人工复核候选。"
+
+也就是说：**一个"只能作为人工复核候选"的结果，顶层 status 报的是
+SUCCESS。**
+
+我判断 SUCCESS **是有依据的**，不是错报：该件缝总长 0.022820 mm 不超过
+几何容差 0.05 mm，且形状已是有效 Solid，按已封闭处理——顶层 status 说的
+是"形状闭合且有效"，区域级 status 说的是"补面候选未经连续性验证"，
+**两者是不同层的语义**。
+
+但顶层 SUCCESS 确实**容易被读成"补好了"**，而实际上 9 个区域里 8 个
+一个都没真修（method='none'）。我**没有擅自改它**——这是语义分层的
+设计决定，改判据会影响既有基准口径。我只如实记录这个观察，请甲方判断
+是否需要把顶层 status 与区域级状态的关系显式化。
+
+四、feature-classify 输出核对：数字自洽
+
+    status = BASELINE
+    backend = step_via_ocp
+    horizontal_face_count = 2003
+    vertical_face_count   = 5286
+    other_face_count      = 8092
+
+**核对**：`2003 + 5286 + 8092 = 15381`，而
+`diagnostics.triangle_count = 15381` —— **完全对得上**。三类面的计数
+是真实且自洽的，不是随便填的。
+
+`--tolerance-deg 20` 生效：`diagnostics.horizontal_tolerance_deg = 20.0`。
+
+两条 warnings 都是**诚实的能力声明**，这点很好：
+
+    "我当前按三角网格法向识别平面候选，不代表最终 CAD 面类型。"
+    "我当前未识别台阶、R 角、孔洞和真实 B-Rep 邻接拓扑。"
+
+它没有假装做了自己没做的事。
+
+五、回归里出现一次失败，我查清了是别人的瞬时状态
+
+全量回归第一次报：
+
+    FAILED tests/test_step_features.py::test我方分块边相交判定在巨型环上仍
+    给出正确结论
+    NameError: name '_polygon_edges_intersect' is not defined
+
+我没有当成噪音放过。查了源码：`_polygon_edges_intersect` **存在**
+（`step_features.py` 第 2497 行），测试也从第 17 行正常导入它。
+
+结论：**跑测试那一刻该文件正处于被并行会话写入的中间状态**（导入时
+函数还没定义）。等写入完成后单独复跑 **49 passed**，随后全量
+**475 passed**。不是真缺陷，我没有改测试去绕过它。
+
+六、我执行的验证
+
+- visualize --regions：regions=0 -> 9，与报告一致，产出 4 个非空文件。
+- feature-classify：面数自洽（15381 = 15381），tolerance 生效。
+- 全量回归：**475 passed in 293.54s**。
+
+七、当前权威状态（修补部分未变）
+
+11 个确有缝的真实件：**9 个补成封闭实体 = 81.8%**，分母完整。
+`训练集/1` 四条路全无效、`训练集/4` 我主动不动它。
+**任务书 92% 仍未达成。**
+
+八、我保留的限制
+
+1. 任务书 92% 未达成（81.8%），卡点唯一是 `训练集/1`。
+2. **顶层 SUCCESS 与区域级 MANUAL_REVIEW_REQUIRED 并存**（见第三节），
+   我**没有改**它，只记录观察。请甲方判断是否需要显式化两者关系。
+3. 我只跑了 `visualize --regions-kind step-repair` 一种；
+   **`regions-kind inspection` 那种我仍然没走**。
+4. 我只核对了 feature-classify 的**面数自洽**，**没有核对分类结果
+   "准不准"**——我没有可用于比对的真值标注，无法判断 2003/5286/8092
+   这个划分是否正确，只能说它内部自洽。
+5. visualize 产出的 PNG 我只看了**文件体积**（272KB / 45KB）判断非空，
+   **没有打开图去看画得对不对**。
+6. manifest 的 `dataset_split` 全 unassigned、`label_status` 全 unknown；
+   同一模型 .stp/.stl 登记成两个独立样本，将来真划分时有泄漏风险。
+   这两个我都未处理。
+7. 三角化补面默认关闭；只保证贴合边界、不保证相切；凹环未验证。
+8. 合成基准 `测试集/8#face3` 我没修好；合成 `case_count` 14→17 未查明。
+9. 无一例 G1/G2；MakeFilling 多 support 段错误未根治。
+10. 任务书"单模型 8 秒"：单件中位 21.7 秒、最慢 220.2 秒，未达标。
+
+本轮**无代码改动**，只做核对与验证。产出已清理。

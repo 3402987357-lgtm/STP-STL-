@@ -1,0 +1,193 @@
+{
+  "schema_version": "registration-default-change-evidence-1.0",
+  "pairs_compared": 20,
+  "before_mode": "centroid",
+  "after_mode": "auto",
+  "before_total_elapsed_s": 2032.9,
+  "after_total_elapsed_s": 1271.5,
+  "max_before_missing_ratio": 0.957159,
+  "max_after_missing_ratio": 0.076667,
+  "conclusion": "默认配准从 centroid 改为 auto 后，20 个真实件的 missing 比例从 13.3%~95.7% 降到 0.0%~7.7%；总耗时从 2033s 降到 1272s（降 37%）。",
+  "rows": [
+    {
+      "pair": "测试集/1",
+      "before_missing_ratio": 0.647361,
+      "after_missing_ratio": 0.000879,
+      "before_residual_mm": 0.36789,
+      "after_residual_mm": 0.094345,
+      "before_elapsed_s": 183.441,
+      "after_elapsed_s": 60.354
+    },
+    {
+      "pair": "测试集/10",
+      "before_missing_ratio": 0.515262,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": 0.247788,
+      "after_residual_mm": 0.067279,
+      "before_elapsed_s": 200.906,
+      "after_elapsed_s": 87.972
+    },
+    {
+      "pair": "测试集/11",
+      "before_missing_ratio": 0.957159,
+      "after_missing_ratio": 0.000151,
+      "before_residual_mm": 2.307038,
+      "after_residual_mm": 0.485854,
+      "before_elapsed_s": 528.498,
+      "after_elapsed_s": 90.737
+    },
+    {
+      "pair": "测试集/12",
+      "before_missing_ratio": 0.878014,
+      "after_missing_ratio": 7.7e-05,
+      "before_residual_mm": 0.967016,
+      "after_residual_mm": 0.212265,
+      "before_elapsed_s": 129.877,
+      "after_elapsed_s": 64.422
+    },
+    {
+      "pair": "测试集/2",
+      "before_missing_ratio": 0.800241,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": 0.222389,
+      "after_residual_mm": 0.071453,
+      "before_elapsed_s": 53.67,
+      "after_elapsed_s": 63.416
+    },
+    {
+      "pair": "测试集/3",
+      "before_missing_ratio": 0.223249,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": 0.412034,
+      "after_residual_mm": 0.173504,
+      "before_elapsed_s": 131.23,
+      "after_elapsed_s": 123.949
+    },
+    {
+      "pair": "测试集/4",
+      "before_missing_ratio": 0.132924,
+      "after_missing_ratio": 0.000196,
+      "before_residual_mm": 0.293104,
+      "after_residual_mm": 0.170978,
+      "before_elapsed_s": 76.788,
+      "after_elapsed_s": 106.064
+    },
+    {
+      "pair": "测试集/5",
+      "before_missing_ratio": 0.215598,
+      "after_missing_ratio": 0.000511,
+      "before_residual_mm": 0.129133,
+      "after_residual_mm": 0.073399,
+      "before_elapsed_s": 14.567,
+      "after_elapsed_s": 30.414
+    },
+    {
+      "pair": "测试集/6",
+      "before_missing_ratio": 0.237698,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": 0.092259,
+      "after_residual_mm": 0.035733,
+      "before_elapsed_s": 9.688,
+      "after_elapsed_s": 19.557
+    },
+    {
+      "pair": "测试集/7",
+      "before_missing_ratio": 0.477974,
+      "after_missing_ratio": 0.000453,
+      "before_residual_mm": 0.188876,
+      "after_residual_mm": 0.065886,
+      "before_elapsed_s": 33.887,
+      "after_elapsed_s": 50.769
+    },
+    {
+      "pair": "测试集/8",
+      "before_missing_ratio": 0.716539,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": 0.522045,
+      "after_residual_mm": 0.100462,
+      "before_elapsed_s": 196.81,
+      "after_elapsed_s": 114.516
+    },
+    {
+      "pair": "测试集/9",
+      "before_missing_ratio": 0.001274,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": null,
+      "after_residual_mm": 0.039118,
+      "before_elapsed_s": 12.89,
+      "after_elapsed_s": 26.653
+    },
+    {
+      "pair": "训练集/0",
+      "before_missing_ratio": 0.665963,
+      "after_missing_ratio": 1e-06,
+      "before_residual_mm": 0.473528,
+      "after_residual_mm": 0.214428,
+      "before_elapsed_s": 49.928,
+      "after_elapsed_s": 78.303
+    },
+    {
+      "pair": "训练集/2",
+      "before_missing_ratio": 0.911132,
+      "after_missing_ratio": 0.000475,
+      "before_residual_mm": 1.334028,
+      "after_residual_mm": 0.138104,
+      "before_elapsed_s": 108.735,
+      "after_elapsed_s": 48.858
+    },
+    {
+      "pair": "训练集/3",
+      "before_missing_ratio": 0.541292,
+      "after_missing_ratio": 1e-06,
+      "before_residual_mm": 0.342037,
+      "after_residual_mm": 0.213001,
+      "before_elapsed_s": 43.18,
+      "after_elapsed_s": 72.167
+    },
+    {
+      "pair": "训练集/4",
+      "before_missing_ratio": 0.768564,
+      "after_missing_ratio": 0.0,
+      "before_residual_mm": 0.317668,
+      "after_residual_mm": 0.103566,
+      "before_elapsed_s": 14.578,
+      "after_elapsed_s": 29.692
+    },
+    {
+      "pair": "训练集/5",
+      "before_missing_ratio": 0.772165,
+      "after_missing_ratio": 0.000374,
+      "before_residual_mm": 0.389316,
+      "after_residual_mm": 0.154483,
+      "before_elapsed_s": 59.61,
+      "after_elapsed_s": 87.233
+    },
+    {
+      "pair": "训练集/6",
+      "before_missing_ratio": 0.949532,
+      "after_missing_ratio": 2e-06,
+      "before_residual_mm": 0.962157,
+      "after_residual_mm": 0.230371,
+      "before_elapsed_s": 114.216,
+      "after_elapsed_s": 67.98
+    },
+    {
+      "pair": "训练集/7",
+      "before_missing_ratio": 0.866805,
+      "after_missing_ratio": 0.027436,
+      "before_residual_mm": 0.490396,
+      "after_residual_mm": 0.098288,
+      "before_elapsed_s": 49.617,
+      "after_elapsed_s": 30.91
+    },
+    {
+      "pair": "训练集/8",
+      "before_missing_ratio": 0.851842,
+      "after_missing_ratio": 0.076667,
+      "before_residual_mm": 0.169842,
+      "after_residual_mm": 0.045427,
+      "before_elapsed_s": 20.811,
+      "after_elapsed_s": 17.56
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schema_version": "verification-gate-1.0",
+  "status": "PASS",
+  "timestamp": "2026-10-10T10:04:03+08:00",
+  "root": "D:\\STP_STL_Missing_Region_Recognition",
+  "stages": [
+    {
+      "name": "bytecode_purge",
+      "ok": true,
+      "summary": "我已清理 11 个项目缓存目录。"
+    },
+    {
+      "name": "pytest",
+      "ok": true,
+      "returncode": 0,
+      "summary": "423 passed in 101.35s (0:01:41)",
+      "failures": [],
+      "command": "D:\\STP_STL_Missing_Region_Recognition\\.venv\\Scripts\\python.exe -B -m pytest -q -p no:cacheprovider D:\\STP_STL_Missing_Region_Recognition\\tests"
+    },
+    {
+      "name": "compileall",
+      "ok": true,
+      "returncode": 0,
+      "summary": "<无输出>",
+      "failures": [],
+      "command": "D:\\STP_STL_Missing_Region_Recognition\\.venv\\Scripts\\python.exe -B -m compileall -q src scripts tests"
+    },
+    {
+      "name": "pip_check",
+      "ok": true,
+      "returncode": 0,
+      "summary": "No broken requirements found.",
+      "failures": [],
+      "command": "D:\\STP_STL_Missing_Region_Recognition\\.venv\\Scripts\\python.exe -B -m pip check"
+    },
+    {
+      "name": "outputs_audit",
+      "ok": true,
+      "summary": "214/361 有效、0 损坏、147 跳过、status=PASS",
+      "report": "reports\\verification_gate_turn32.json"
+    },
+    {
+      "name": "cache_cleanup",
+      "ok": true,
+      "summary": "我收口时清理 12 个缓存目录，剩余 0 个。"
+    }
+  ],
+  "comment_ratio": {
+    "target": 0.25,
+    "status": "PASS",
+    "total_lines": 35105,
+    "strict_comment_lines": 8863,
+    "line_ratio_strict": 0.252471,
+    "line_ratio_with_inline": 0.253326,
+    "docstring_coverage": 1.0,
+    "module_docstring_coverage": 1.0
+  },
+  "record": "reports\\开发记录_注释率提升.txt",
+  "report": "reports\\verification_gate_turn32.json"
+}

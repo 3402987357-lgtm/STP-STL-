@@ -1,0 +1,61 @@
+我方量出合成3个REVIEW件的真实残余缝长，并**推翻了我自己上一轮的一个推测**
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、怎么量到的
+
+这 3 件因为"门禁拒 -> 不写出"，基准里 `residual_boundary_length_mm` 是 None，
+**连"超了多少"都不知道**。我用**纯测量**拿到：把 `do_no_harm` 与
+`preserve_original_on_failure` 关掉**强制写出**待复核 shape 再量。
+**这只是测量，不改生产代码。**
+
+二、真实残余（强制写出后）
+
+    测试集/9#face3   gap=**0.000000** mm  自由边=**0**  SOLID=**1**  valid=**True**
+    训练集/5#face1   gap=0.060402 mm      自由边=7      SOLID=**0**  valid=True
+    训练集/5#face3   gap=0.066252 mm      自由边=9      SOLID=**0**  valid=True
+
+三、**推翻我上一轮的一个推测**（必须先说这件）
+
+我上一轮写过："修合成路径的口径不一致后，**这 3 件的 hole_closed 有机会变
+True**（取决于真实残余总长是否 <= 容差）"。
+
+**实测把这个推测否掉了**：训练集/5 两件的残余是 **0.060402 / 0.066252 mm**，
+**都超过 0.05 容差**。所以就算修了合成路径口径，它们**仍旧是 False**。
+我当时是在没有这个数的情况下做的推断，现在数据到了，推断不成立。
+
+四、一个更值得看的发现：**测试集/9#face3 其实被补好了**
+
+它强制写出后：**缝 0 mm、自由边 0 条、是有效 Solid（1 个）、形状有效**——
+**这是一份修好了的结果**，正常模式下却报 REVIEW 且不写出。
+
+我追了门禁（`step_hole.py:799-822`）：它是**按环否决**的，
+
+    material = [环 for 环 if 环.review_required and _region_gap_is_material(环)]
+    formal_output_quality_pass = output_quality_pass and not material
+
+而 `_region_gap_is_material`（3118-3142）对**已采纳补面**的环返回 False（不
+否决）。我打印了每个环：
+
+    测试集/9#face3  3 个环：**全部 patch_accepted=True**、loop_gap=0.99/2.39/3.20
+    训练集/5#face1  1 个环：patch_accepted=True、loop_gap=3.68
+    训练集/5#face3  3 个环：**全部 patch_accepted=True**、loop_gap=3.68/1.61/4.13
+
+**所有环都是 patch_accepted=True -> 按 3137 行一个都不该否决 -> material 应为空。**
+
+所以 REVIEW **不是"环"造成的**，而是 `formal_output_quality_pass` 里的
+**`output_quality_pass` 这一项为 False**（808-809）。也就是说，**拒它的不是缝，
+是别的东西**。
+
+五、**这一步我没做完**：`output_quality_pass` 是什么、为什么为 False，
+我**没有查**。这是下一层，需要再读一段代码。
+
+六、我保留的限制
+
+1. 上面所有"强制写出"的数字，都是**关掉不伤害保护**才拿到的。**正常模式下
+   这些件就是不写出**，所以基准看不到这些值——这不是 bug，是保护策略。
+2. 训练集/5 两件是 **SOLID=0**（没变成实体），它们报 REVIEW **是合理的**。
+   只有 测试集/9#face3（SOLID=1、缝=0）看起来像是被误判。
+3. **我没有改任何代码**，本轮纯测量。
+4. 我在上一条限制里说过"修口径可能让它们变 True"——**已被本轮数据推翻**，
+   以本条为准。

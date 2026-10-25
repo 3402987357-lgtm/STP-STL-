@@ -1,0 +1,129 @@
+我方第一人称版 非凸孔洞耳切修补与修补成功率基准
+记录日期：2026-10-06
+
+一、本轮我要解决的问题
+
+任务书要求"修补成功率 ≥ 92%"，但项目里只有修补代码和 3 个立方体单测，
+没有任何在真实零件几何上的成功率证据。甲方给的 STL 又全部是水密闭合网格
+（我实测 `boundary_edge_count = 0`），没有现成孔洞可统计。
+所以本轮我做两件事：先给修补器建一个可复现的基准，再用它找出并修掉
+真实缺陷。
+
+二、我先做的三段诊断（结论都要落到证据上）
+
+1. 耗时热点：我用 `cProfile` 跑了 `测试集\6` 的完整检测，热点是
+   `trimesh.proximity.closest_point`（24.10 s / 2 次调用，其中
+   `rtree.intersection_v` 8.44 s、`trimesh.triangles.closest_point` 7.56 s），
+   其次是 `build_triangle_adjacency`（5.90 s / 2 次）和 Python 惰性导入
+   编译（`builtins.compile` 5.39 s / 536 次）。
+2. 距离后端对照：同一对样本、同一配置只换后端，
+   `auto`（走 trimesh）`82.61 s` 完成，`scipy_kdtree`（项目自带 KD-tree
+   宽相位 + 精确窄相位）跑了 420 秒仍未结束，被我主动终止。
+   结论：`auto` 选 trimesh 是对的，热点不是"选错后端"。
+3. `训练集\7` 报 0 区域但有 `missing_area_ratio = 0.0742`：
+   我查了它的 `result.json`，管线已经明确告警
+   "我过滤了 20.001666 mm2 的小面积缺失候选区域，请确认最小区域阈值"，
+   状态是 `review`。这不是缺陷，是诚实的噪声过滤，我不改它。
+
+三、我找到并修掉的两个真实缺陷
+
+缺陷 1：非凸边界环上用盲目中心扇面，补片越界。
+
+`repair_mesh_holes` 原来无论边界环凸不凸，只要 `allow_nonconvex=True`
+就调 `_fan_faces` 连中心点。对非凸环，扇面三角形会跨到多边形外面。
+实测 `测试集\6#face64`：边界环投影面积 `0.041882 mm²`，
+扇面补片新增面积误差 `0.015928 mm²`，**相对误差 38%**，
+被 `validate_repair` 的 5% 面积门禁拦下 → 非凸孔洞必然修补失败。
+
+修法：新增 `_ear_clip_faces`（耳切三角化），凸环继续走中心扇面，
+非凸环改走耳切；耳切失败（自相交等）时该区域标 `manual_review_required`
+并给出明确告警，不产出可疑补片。方法名会写进区域记录
+（`planar_triangle_fan` / `planar_ear_clipping`）。
+
+缺陷 2：面积门禁拿"投影面积"当基准，误杀非平面环的正确补片。
+
+原来的期望面积用边界环在最佳拟合平面上的投影面积。对非平面环，
+三维补片面积天然大于投影面积。实测真实 CLI 流程
+（`测试集\6` 挖 64 面、28 顶点非凸非平面环）：补片正确闭合孔洞、
+拓扑改善、无退化/非流形增加，但新增面积 `0.1340 mm²` 比投影面积
+`0.1256 mm²` 大 6.7%，超过 5% 容差 → 被误判"面积不一致"，
+状态回落 `review` 并保留原网格，CLI 退出码 1。
+
+修法：新增 `_loop_reference_area_mm2`，用"边界环正确三角化后的三维面积"
+作基准。对平面多边形它等于真实多边形面积（L 形环实测 `7.000000`，
+而它的凸包面积是 `11.5`，所以这个基准不会放过"多补 64% 面积"的坏补片）；
+对非平面环它和补片同量级，不会把几何差异当成错误。
+
+四、我新增的基准工具
+
+`scripts\benchmark_mesh_repair.py`：拿真实水密零件网格当"完整模型"，
+用已有的 `learning\synthetic_defects.remove_face_region` 按共享边邻接
+删掉一块连续三角面（面积与位置都已知），再跑项目自己的
+`repair_mesh_holes`，用输出网格的边界边数判断孔洞是否真的补上。
+每个用例都会写出 `repair-1.0` 的 `repair.json` 与 `repair_regions.csv`，
+汇总 schema 为 `mesh-repair-benchmark-1.0`。
+
+覆盖：`data\provided\三维模型破损区域智能修补` 下体积 ≤ 10 MiB 的
+7 个真实网格（测试集 2/5/6/7/9，训练集 4/8），每个挖
+1 面 / 8 面 / 64 面三种孔洞，共 21 个用例，种子固定可复现。
+
+五、实测结果
+
+1. 默认配置（`allow_nonconvex=False`，即当前交付默认）：
+   `hole_closed_count = 7/21 = 33.3%`；按孔洞大小拆开是
+   1 面 `7/7`、8 面 `0/7`、64 面 `0/7`。
+   原因：任何多面孔洞的边界环都非凸，被安全门禁拒绝。
+2. 放宽非凸（`--allow-nonconvex`，走新的耳切路径）：
+   `hole_closed_count = 20/21 = 95.2%`；按孔洞大小拆开是
+   1 面 `7/7`、8 面 `7/7`、64 面 `6/7`。
+   唯一失败是 `训练集\8#face64`：边界环平面度 `0.0514 mm`
+   超过 `max_planarity_error_mm = 0.05`，被正确拒绝（不是漏补，是守门）。
+3. 关键单点对照（`测试集\6#face64`）：
+   修复前扇面补片面积误差 `0.015928 / 0.041882 = 38%` 被拦下；
+   耳切后误差降到 `0.001518 / 0.041882 = 3.6%`（剩余部分来自边界环
+   本身不平面），孔洞闭合、状态 `success`。
+4. 真实 CLI 端到端（`cad-inspector repair`）：
+   输入 `测试集\6` 挖 64 面生成的 `damaged.stl`（28 条边界边、1 个环），
+   加 `--allow-nonconvex` 后输出 `status = success`、
+   `boundary_edge_count 28 → 0`、`method = planar_ear_clipping`、
+   `added_area_error_mm2 = 1.11e-15`、进程退出码 0，
+   并写出 `repair.json` / `repair_regions.csv`。
+5. 放宽轮的修补耗时：min/中位/max = `1.788 / 4.676 / 22.290 s`。
+
+六、我执行的验证
+
+1. 新增 `tests\test_mesh_repair_nonconvex.py`（4 个测试）：L 形非凸环
+   必须走耳切并闭合、默认配置仍拒绝非凸、凸环仍走中心扇面、
+   面积基准必须等于真实多边形面积（7.0）而不是凸包面积（11.5）。
+2. 新增 `tests\test_mesh_repair_benchmark.py`（4 个测试）：挖洞种子固定
+   且落在范围内、汇总区分补上与补不上、报告写出失败时保留旧文件、
+   汇总可序列化。
+3. 定向回归：`test_mesh_repair`、`test_mesh_repair_nonconvex`、
+   `test_mesh_repair_benchmark`、`test_cli_commands`、`test_pipeline_units`、
+   `test_extreme_cases`、`test_output_atomic`、`test_adaptive_threshold`、
+   `test_real_threshold_calibration`、`test_cleanup_policy`、
+   `test_artifact_audit` 合计 `99 passed`。
+4. 基准结果文件：`outputs\repair_benchmark\summary.json`（默认配置）与
+   `outputs\repair_benchmark_relaxed\summary.json`（放宽非凸）。
+
+七、我保留的限制（不写成已达成）
+
+1. 这个 95.2% 是**合成孔洞基准**上的成功率，不是甲方标注真值上的成功率。
+   甲方数据没有孔洞标注，两者不能混为一谈。
+2. 默认配置仍是 `allow_nonconvex=False`，默认成功率只有 33.3%。
+   我没有擅自改默认值：放宽非凸会改变交付行为，属于甲方决策。
+   我给出的是"放宽后经耳切已可正确修补"的证据。
+3. 修补只覆盖平面/近平面简单孔洞。`训练集\8#face64` 这类明显不平面的孔洞
+   仍被拒绝，需要曲面拟合（NURBS 补面）才能补，未实现。
+4. STEP 侧 `step_hole.py` 有同样的非凸门禁（`allow_nonconvex`），
+   但它走 OCP 面填充而不是三角化，本轮没有做等价改造。
+5. 本轮没有做孔洞面积/位置精度的完整统计，只统计"是否闭合"和面积误差。
+
+八、交接关键词
+
+`_ear_clip_faces`、`planar_ear_clipping`、`_loop_reference_area_mm2`、
+`allow_nonconvex`、`mesh-repair-benchmark-1.0`、
+`scripts\benchmark_mesh_repair.py`、`remove_face_region`、
+`hole_closed_count 7/21 → 20/21`、`95.2%`、`38% → 3.6%`、
+`训练集/8#face64 平面度 0.0514 mm`、`trimesh.proximity.closest_point`、
+`scipy_kdtree 420 s 未完成`、`训练集/7 小面积过滤不是缺陷`。

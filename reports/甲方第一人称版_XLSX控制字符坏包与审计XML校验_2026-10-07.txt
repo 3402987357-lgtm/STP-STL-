@@ -1,0 +1,68 @@
+我方 BOM XLSX 控制字符坏包修复与审计 XML 校验记录
+日期：2026-10-07
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+BOM 的 XLSX 是交给甲方的正式交付表。我方在复核 bom_report.py 的单元格写出时
+发现一条会产出"打不开的文件"的真实路径。
+
+原因：_xlsx_cell 对文本只做了 html.escape（转义 & < >），没有处理 XML 1.0
+禁止的控制字符。STEP 字符串、主数据或文件名只要带进一个 C0 控制符，
+生成的工作表 XML 就会不合法。
+
+我用 part\x0bname 复现：
+
+  生成片段：<c r="A1" t="inlineStr"><is><t xml:space="preserve">part\x0bname &amp; &lt;tag&gt;</t></is></c>
+  解析结果：ParseError: not well-formed (invalid token)
+
+也就是说，这个 xlsx 压缩包本身是完整的，但 Excel 打开时会直接报文件损坏。
+更麻烦的是，原审计器只检查 zip 完整性和成员名，抓不到这种"能解压、XML 已坏"
+的假通过。
+
+二、我方怎么改
+
+我按"根因在写出、审计做兜底"两条一起收：
+
+1. bom_report.py 新增 _xml_safe_text 与 _is_xml_char。_is_xml_char 严格按
+   XML 1.0 的 Char 产生式判断（#x9 / #xA / #xD、#x20-#xD7FF、#xE000-#xFFFD、
+   #x10000-#x10FFFF）；_xml_safe_text 把非法码点换成空格，再交给 html.escape。
+   我选择换空格而不是静默删除，是为了不把 "part\x0bname" 粘成 "partname"。
+2. artifact_audit.py 的 _audit_xlsx 除了查 zip 和必需成员，还解析
+   [Content_Types].xml、xl/workbook.xml 以及 xl/worksheets/*.xml；
+   任何成员 XML 不合法就直接记 INVALID 并保留中文原因。
+
+三、我执行的验证
+
+我新增两条用例：
+
+1. test我方xlsx控制字符不会写出坏xml：写一个含 \x0b 的名称，断言整体 PASS、
+   文件 VALID。
+2. test我方审计拒绝xml损坏的xlsx：手写一个 workbook.xml 截断的 xlsx，
+   断言整体 REVIEW_REQUIRED、文件 INVALID、issues 含"XML 不合法"。
+
+命令与结果：
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_artifact_audit.py tests\test_bom_batch.py
+-> 20 passed
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_step_bom_ocp.py tests\test_formal_output_contract.py
+tests\test_step_engineering.py
+-> 41 passed
+
+我同时确认现有正式交付物没有被这次更严格的审计误伤：
+audit_artifacts('outputs') -> status=PASS、195 有效、0 损坏、7 跳过；
+11 个 .bom.xlsx（BOTTLE、mould_04、bom_batch 各套模具）全部 VALID。
+
+四、我保留的限制
+
+1. 我只保证 XML 1.0 合法；OOXML 语义层面的错误（例如样式引用写错、关系 ID
+   对不上）不在当前审计范围内。
+2. 我换空格会改变极少数含控制符的原始字符串；这是"保证交付物可打开"的取舍，
+   我把它写清楚，不做静默删除。
+3. 本轮机器内存被其他项目占满，单进程全量 pytest 会触发 Windows 资源不足的
+   致命异常；我以逐文件独立进程方式完成全量回归（301 passed）。
+4. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、
+   工业 G0/G1/G2、GUI、安装包或生产验收。

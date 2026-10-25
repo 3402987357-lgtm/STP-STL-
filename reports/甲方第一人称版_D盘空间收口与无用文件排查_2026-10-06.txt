@@ -1,0 +1,82 @@
+我方第一人称版 D 盘空间收口与无用文件排查
+记录日期：2026-10-06
+
+一、本轮目标
+
+我方按甲方要求，在继续写计划书和报告的过程中顺手做一次 D 盘空间收口：
+把明确可再生成、不属于交付物的东西删掉，避免长期续写把 D 盘堆满；
+同时保证不误删 `data\raw`、`data\provided`、`.venv`、源码、测试、
+正式 outputs 和 TXT 报告。本轮的底线是"只删可再生成的白名单垃圾"，
+不是"为了腾地方乱删"。
+
+二、我先量了真实占用，再决定删什么
+
+1. 当前 D 盘可用约 `178.44 GiB`，项目本体合计约 `2,174.73 MiB`。
+2. 项目内部占用（我方实测）：
+   - `data`   1,351.56 MiB
+   - `.venv`    688.85 MiB
+   - `outputs`  132.63 MiB
+   - `src`        0.63 MiB
+   - `reports`    0.65 MiB
+   - `tests`      0.20 MiB
+   - `scripts`    0.04 MiB
+   - `configs`    0.00 MiB
+3. 结论：项目本体里最大的三块分别是甲方给的原始数据、可复现的 Python 虚拟环境、
+   正式工程输出。它们都不能删，真正可回收的只有缓存和重生成过程日志。
+
+三、我实际删掉了什么
+
+1. 可再生成输出清理脚本 `scripts\cleanup_regenerable_outputs.ps1`：
+   本次命中 `Cleanup targets: 0`，即 outputs 里没有任何遗留的探测目录、
+   临时目录或 `*regeneration*.log`。清理后 outputs 仍为 30 个正式文件。
+2. 缓存清理脚本 `scripts\cleanup_project_caches.ps1`：
+   本次复核后项目缓存目录为 `0`。
+3. 统一门禁脚本 `scripts\verify_project.py` 在收口阶段一次清掉 `40` 个
+   字节码缓存目录，收尾复核剩余 `0` 个。
+4. 也就是说：这一轮没有"大块垃圾"可删，因为上一个进程已经按白名单清干净了；
+   我做的是独立复核 + 把门禁再跑一遍，确认没有新的残留。
+
+四、我特意没删的东西，以及原因
+
+1. `data\raw`、`data\provided`：甲方给的原始数据，不可再生成，绝对保留。
+2. `data\processed\BOTTLE_current.stl`、`BOTTLE_deflection_1mm.stl`：
+   报告里被引用为中间交付物，保留。
+3. `.venv`：当前测试与运行环境，删了要重装依赖，得不偿失，保留。
+4. `data\raw` 里随数据集自带的 `.log` 文件（如 `BOTTLE.log`、
+   `MD270324.log`）：它们属于甲方原始数据的一部分，不是我们生成的日志，保留。
+5. 桌面 `D:\桌面` 下的 `888.rar`（约 195.43 MiB）、`144.rar`（约 52.98 MiB）、
+   `915551d3-....rar`（约 35.17 MiB）、`6.rar`（约 12.17 MiB）：
+   它们看起来像是本项目数据集的原始压缩包，合计数百 MiB，是 D 盘上最可疑的
+   "可能冗余"项。但本机没有 7-Zip、WinRAR、UnRAR 或 `rarfile`，
+   我无法解压核对它们是否已被完整解包进项目，因此我不动它们，只登记，
+   由甲方决定是否删除。
+6. C 盘临时目录里的 `pip-unpack-*` 等安装残留（合计约 28 MiB）：
+   它们在 C 盘不在 D 盘，且属于系统级临时文件，不在本项目收口范围内，保留。
+
+五、我方验证
+
+1. 统一门禁 `python -B scripts\verify_project.py` 返回 `status=PASS`、退出码 0：
+   - `pytest`：`226 passed in 24.29s`
+   - `compileall`：退出码 0
+   - `pip check`：`No broken requirements found.`
+   - `outputs_audit`：`30/30` 有效、0 损坏、0 跳过、`PASS`
+   - `cache_cleanup`：清理 40 个缓存目录，剩余 0
+2. 收口后实测：项目缓存目录 `0`、outputs `30` 个正式文件共 `139,068,005`
+   字节、D 盘可用约 `178.44 GiB`。
+3. 我确认没有删除 `data\raw`、`data\provided`、`.venv`、源码、测试、
+   正式 outputs 或任何 TXT 报告。
+
+六、当前限制
+
+1. 本机缺少 RAR 解压工具，我无法核对桌面压缩包与项目数据是否一一对应，
+   所以没有把它们算进"已清理"。
+2. 空间结论只对 2026-10-06 当前快照成立；后续 AI 继续写文件后需要重跑门禁。
+3. 真正占 D 盘的大头（游戏 406 GiB、Program Files 133 GiB、模拟器 39 GiB）
+   都不是本项目文件，我不越界处理。
+
+七、交接关键词
+
+`cleanup_regenerable_outputs.ps1`、`cleanup_project_caches.ps1`、
+`verify_project.py`、`Cleanup targets: 0`、`项目缓存目录 0`、`226 passed`、
+`30/30 VALID`、`139,068,005 字节`、`D 盘可用 178.44 GiB`、
+`桌面 rar 待甲方确认`、`pip-unpack 属 C 盘不处理`。

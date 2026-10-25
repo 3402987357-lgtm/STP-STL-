@@ -1,0 +1,13 @@
+{
+  "by_reference_shape": {
+    "label:2": {
+      "part_name": "MOLD_BASE_01",
+      "category": "模架件候选"
+    }
+  },
+  "by_part_name": {
+    "GUIDE_POST_01": {
+      "category": "导向件候选"
+    }
+  }
+}

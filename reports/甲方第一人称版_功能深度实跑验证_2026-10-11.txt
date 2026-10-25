@@ -1,0 +1,88 @@
+我方实跑验证功能深度：子命令20个全接线、probe与voxel真出结果、batch-inspect没跑完
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么做这轮
+
+上一轮我逐项 import 验证了 8 项扩展需求的**模块存在**。但那是**最浅的
+一层**：import 成功只说明模块能被加载，说明不了功能接好了线、更说明不了
+跑得出结果。这一轮往下挖两层：
+
+1. 有没有**空壳 / TODO / 未实现**；
+2. 实跑 CLI 子命令，看**是否真出结果**。
+
+二、第一层：没有空壳和未完成标记
+
+- 全 `src` 扫 `NotImplementedError / TODO / FIXME / XXX / 未实现`：**0 处
+  真实命中**（5 处命中的是注释里"占位"这个词，不是代码未完成）。
+- 扫"函数体只有 pass"：**0 处**。
+
+三、第二层：CLI 接线（20 个子命令）
+
+我把 20 个子命令的 `--help` 全跑一遍，按退出码判断接线：
+
+    inspect validate repair step-repair step-report step-face-features
+    step-feature-classify step-engineering-features probe audit bom
+    dataset feature-classify visualize validate-annotations
+    evaluate-synthetic parting voxel batch-inspect flowchart
+
+    **20 个全部 exit=0，接线正常。**
+
+四、第三层：实跑（这才是我真正想验证的）
+
+`--help` 通了只说明参数解析接好，**不代表跑得出结果**。所以实跑：
+
+**需求 1（真实 STEP/STL 接入）—— probe 通过**
+
+    cad-inspector probe ...训练集/1.stp --no-files --compact
+    -> [COMPLETE] 1.stp | STEP | **entities=634833**（5 秒）
+
+**需求 4（体素 / 截面辅助比对）—— voxel 通过**
+
+    cad-inspector voxel 训练集/1.stp 训练集/1.stl --max-voxels 200000
+    -> status=REVIEW_REQUIRED
+       reference_voxel_count=14573  candidate_voxel_count=14318
+       missing_count=2447  extra_count=2192  iou=0.723
+       warnings: 参考网格有 607 条自由边，网格未封闭，体素填充会从破口
+                 漏到外部，体积证据不可信。
+
+    它**自己给出了质量告警**（自由边导致体积证据不可信）——这是有深度的
+    行为，不是返回个数字了事的空壳。
+
+**需求 8c（批处理编排）—— batch-inspect 没跑出结果**
+
+    训练集/1.stp（63 万实体）：跑 10 分钟无产物，我中止。
+    换成最小的 测试集/8.stp（0.92MB）：跑 10 分钟仍然无产物。
+
+    **我没能实跑出 batch-inspect 的结果**，如实记录，不假装跑通。
+    可能是配准计算量本身就大，也可能是这条路径有问题——**我分不清**，
+    因为没拿到任何输出（没有报错，也没有产物）。
+
+五、我更正自己上一轮的一个说法
+
+上一轮我写"probe_any 对这些文件返回的 entities 全是 None，我没查为什么"。
+
+**这个说法是错的**：这一轮用 CLI 跑 `probe`，entities 明确返回 **634833**。
+所以那不是"功能缺失"，是**我上一轮的调用方式不对**（直接调 `probe_any`
+而不是走 CLI）。我上一轮把它写进"保留的限制"里，属于**把自己没搞懂的
+事记成了功能问题**，这里更正。
+
+六、结论
+
+- **8 项需求：模块全在、无空壳、20 个子命令全接线**；
+- 其中 **probe（需求 1）和 voxel（需求 4）实跑出真实结果**；
+- **batch-inspect（需求 8c）实跑未出结果，原因未查明**；
+- 剩下的 dataset（6）、feature-classify（7）、api/ui（8a/8b）**我这一轮
+  没实跑**（api 和 ui 是长驻服务，不适合这样跑）。
+
+七、我保留的限制
+
+1. **需求清单来源仍是我自己的 README 转述**，无甲方原始任务书。
+2. **batch-inspect 实跑失败且原因未查明**——没报错也没产物，我分不清是
+   慢还是坏。这是本轮**最实的缺口**。
+3. dataset（6）、feature-classify（7）、api（8a）、ui（8b）**未实跑验证**
+   功能深度。
+4. 只实跑了 2 个数据文件（训练集/1、测试集/8），覆盖面很窄。
+5. 真实件 `训练集/1` 仍未修。
+
+本轮**无代码改动**。

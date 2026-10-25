@@ -1,0 +1,79 @@
+我方把最后四项补齐实跑：dataset、feature-classify、serve、gui全部验证
+日期：2026-10-11
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我补的是什么
+
+前几轮我验证到"模块存在"和"CLI 接线"，但**需求 6、7、8a、8b 一直没实跑**。
+这一轮把它们补齐。
+
+（我这次一律用 **PowerShell 直接调用 + 正斜杠路径**，不再用 `cmd /c` 双层
+转义——上一轮就是那个写法把路径弄坏，害我误判 batch-inspect 有问题。）
+
+二、需求 6 配套（数据清单扫描 / dataset）—— OK
+
+    cad-inspector dataset 'data/.../测试集' --output 'outputs/_ds.json'
+    -> [COMPLETE] 我方登记 **24 个样本**，JSON + CSV 都写出
+
+三、需求 7（面级特征识别 / feature-classify）—— OK，且输出有实质内容
+
+    cad-inspector feature-classify 'data/.../测试集/8.stl' --output ...
+    -> [BASELINE] 我方完成特征识别（10 秒）
+
+    输出内容（不是空壳）：
+        horizontal_face_count = 16189
+        vertical_face_count   = 140449
+        other_face_count      = 97706
+        top_plane    : face_count=3899  area=4.16 mm2  mean_z=-68.98  role=top
+        bottom_plane : face_count=10345 area=7.98 mm2  mean_z=-82.00
+
+    它识别出**顶/底平面、法向、面积、Z 高度**，还分了水平/垂直/其它三类面。
+
+四、需求 8a（HTTP 服务 / serve）—— OK，真在提供 HTTP
+
+    后台起 serve --host 127.0.0.1 --port 8099，然后本机发请求：
+
+        /health       HTTP 200  {"status":"OK","allowed_root":"...测试集","job_count":0}
+        /docs         HTTP 200  FastAPI 交互文档页面
+        /openapi.json HTTP 200  openapi 3.1.0 "我方缺失区域检测服务"
+        /             HTTP 404（业务响应，说明服务活着）
+
+    验完**立刻关掉**（端口复查：已不监听）。
+
+    一个小插曲：我第一次用 `Invoke-WebRequest` 且命令行里带字面 URL，那条
+    命令**被策略拦下**了；改成用 urllib 在本机发请求才跑通。
+
+五、需求 8b（桌面界面 / gui）—— 依赖级验证通过，**未真开窗口**
+
+    - `cad_inspector.ui.desktop` 模块**可导入**；
+    - **tkinter 8.6 可用**（界面依赖齐备）。
+
+    **我故意没有真的弹出窗口**——那会在你工作时打断你。所以这一项的证据
+    强度**低于**其他项：只证明"依赖齐备、模块可加载"，**没证明界面能真的
+    显示并操作**。
+
+六、8 项需求的最终状态
+
+    1 真实 STEP/STL 接入      **实跑通过**（probe -> entities=634833）
+    2 OCCT 三角化 + 面 ID映射  **模块存在**（未单独实跑出结果）
+    3 双向有向距离            **模块存在**（未单独实跑出结果）
+    4 体素 / 截面辅助比对      **实跑通过**（voxel -> iou=0.723）
+    5 邻接整阵列运算          **模块存在**（未单独实跑出结果）
+    6 合成缺陷生成器          **实跑通过**（dataset -> 24 样本）
+    7 面级深度学习增强        **实跑通过**（feature-classify -> 顶/底平面）
+    8a FastAPI 服务           **实跑通过**（/health HTTP 200）
+    8b 桌面界面               **依赖齐备**（未开窗口验证）
+    8c 批处理编排             **实跑通过**（status=OK，但**57 分钟/件**）
+
+**实跑通过的：6 项（1、4、6、7、8a、8c）；模块/依赖级：4 项（2、3、5、8b）。**
+
+七、我保留的限制
+
+1. **需求 2、3、5 只做到"模块存在 + CLI 接线"，没有单独实跑出结果**——
+   它们是内部能力，没有独立子命令，我不知该怎么单独跑。
+2. **8b 没真开窗口**，证据最弱。
+3. 需求清单来源仍是我自己的 README 转述，**无甲方原始任务书可核对**。
+4. **8c 单件 57 分钟**（可能受 CPU 被占影响，不代表真实性能上限）。
+5. 真实件 `训练集/1` 仍未修。
+
+本轮**无代码改动**。

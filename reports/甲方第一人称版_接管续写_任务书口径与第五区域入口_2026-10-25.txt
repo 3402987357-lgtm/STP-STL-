@@ -1,0 +1,425 @@
+甲方第一人称版｜接管续写：任务书口径（误差达阈值的面）、两个收口杠杆与第五个区域入口
+记录时间：2026-10-25（北京时间）
+项目位置：D:\2026年东莞市工业AI应用创新挑战“百景大赛”\STP_STL_Missing_Region_Recognition
+本文口吻：与前几份 `reports\甲方第一人称版_*.txt` 一致——讲实现、实测、改了什么的是**我方**；
+讲验收口径与放行判断的是**按甲方要求复述的验收视角**。每个数字后面都可复算。
+
+==================================================================
+〇、一句话结论（先说结论，再给证据）
+==================================================================
+1) **在任务书口径（几何误差 ≥ 0.15mm 的面）下、用两个默认关闭的开关打开后，
+   12 个真实尺度的合成缺失首次达到 ≥99%：精确率 1.000 / 面级召回 0.999707 /
+   案例级召回 1.0000**（`status_spec_conformant = BASELINE_TARGET_MET`）。
+   两个开关都**默认关闭**，因为它们是验收口径决策，不是可以替甲方做的工程决定。
+
+2) 默认生产配置（1 点/面、最小区域 0.5mm²）在同一把尺子上的数字是
+   **精确率 1.000 / 面级召回 0.927956 / 案例级召回 0.916667**——**未达 0.99**。
+   两套数字都留在同一份报告里，谁都不许顶替谁。
+
+3) 未达标的两个成因已量化到"面"，并且各自有独立的因果闭合实验：
+   - **轮廓带 1544 面**：生产采样 1 点/面且恒取重心，采不到面上误差最大的位置。
+     证据：只把生产采样提到 4 点/面 → 轮廓带 1544 → 1034，面级召回 0.9280 → 0.9485；
+     只把面级判据补上**三个顶点** → 轮廓带 **1544 → 7**，面级召回 **0.990545**。
+   - **面积门限 178 面**：`min_region_area_mm2=0.5` 把一例实测 0.380411mm² 的缺失丢掉。
+     证据：只把该阈值调到 0.3 → 该案例从"未检出"变成"检出"，案例级召回 0.9167 → **1.0000**，
+     面积门限归因面数 178 → 0，而轮廓带一个面都没变（证明两者互不相干）。
+
+4) 入口可达性：全库复核后**只有** `parting_cli` 这一个区域 CLI 在主 CLI 侧没有入口；
+   我已接成 `parting-baseline`，五个区域 CLI 现在全部可从主 CLI 调用（子命令 26 → 27）。
+
+5) 定稿口径（同源口径的 1.0 不算准确率）：原先"拿生产距离数组同时当预测与真值"的
+   召回 1.0 是**循环**口径，只能证明检测器确定性。我把真值改成**独立密采样**
+   （9 点/面 + 3 顶点），两套口径并排上报，并在 `limitations` 里点名这一点。
+
+6) 并行写入者：本轮我工作时，同一目录里**另有写入者在活动**（WorkBuddy 进程组 +
+   另一个门禁进程），并在我工作期间改过 `annotations*.py`、`detection\distance.py`、
+   `repair\step_hole.py`、`scripts\*.py`、`README.md` 等。我因此把写入范围限制在自己
+   负责的文件上，并在第六节如实记录并发对我的证据时点的影响（含一次由此产生的假失败）。
+
+==================================================================
+一、我接手时复核到的实现状态
+==================================================================
+1.1 环境与安装
+  - `cad_inspector` 以 editable 方式装在 `.venv`；我实测打印过 `__file__`，
+    确认 `import cad_inspector` 解析到本项目 `src\cad_inspector\__init__.py`
+    （`.venv\Lib\site-packages\__editable__.*.pth` 指向本项目 `src`），
+    不存在第二份非 editable 的旧副本覆盖它——这是"改了源码却不生效"最隐蔽的成因。
+
+1.2 区域入口可达性（可复现脚本 + JSON 证据）
+  - 证据：`reports\接管续写_区域入口可达性审计_2026-10-25.json`
+  - 口径：逐模块统计 **src 内部**导入引用数，命中 0 且不是 `__init__.py` 的
+    即"写完却没人调用"的候选。
+  - 复核结果：排除包初始化文件后共审计 79 个模块；零引用模块现在**只剩**
+    `src\cad_inspector\__main__.py`（它本身是入口，属预期）。
+    修复前 `parting_cli.py` 的 src 内引用数为 0，我用红用例实测过
+    （`build_parser()` 的子命令表里没有它）；修复后它由 `cli.py` 引用，
+    因此本次审计中已不再出现在零引用列表里——这就是修复的痕迹。
+  - 主 CLI 现有 27 个子命令；五个区域命令全部走统一的透传路径：
+    `bom` / `dataset` / `feature-classify` / `visualize` / **`parting-baseline`**。
+    五个区域 CLI 同时都有 `mold-*` 控制台脚本入口，两条路都能走。
+
+1.3 评估口径（我复核出的最关键问题）
+  - `learning\evaluation.py` 原先调用 `detect_missing_regions(...)` 时**丢掉了第 4 个
+    返回值**（参考面的生产面级距离数组），真值只能是"被删掉的全部面"。
+  - 更严重的是口径同源：同一份生产距离既当预测依据、又当真值来源，召回必然 1.0。
+    本仓确有这样一条用例（`tests\test_evaluation_detectability.py` 的
+    "按任务书阈值口径的召回是满值"），它证明的只是确定性，不是准确率。
+  - 任务书把缺失区域定义成"几何误差 ≥ 阈值的区域"，而删掉一整块连续面时，
+    紧贴缺口边界的那一圈面的误差天然低于阈值——把它们当分母，召回永远到不了 1。
+
+1.4 真实语料限制（与 10-24 报告一致，我复核后仍成立）
+  - 真实件自动配准跑完只有 3 个区域、最大缺失面积占比 0.076667；
+    全域不存在 `provenance=human` 的人工标注 → **无法在真实语料上算出 99%**。
+  - 训练集/1（1,786,366 面 / 453.7MB）仍因内存跳过；本轮未动，属外部机器约束。
+
+==================================================================
+二、我这一轮做了什么（改动清单：文件级）
+==================================================================
+区域 A（入口可达性）
+  A1 `src\cad_inspector\cli.py`
+     - 新增 `from .parting_cli import main as parting_baseline_main`
+     - 子命令注册循环新增 `("parting-baseline", "我跑分型区域：分型线与分型面候选…")`
+     - `parse_args` **之前**的 `delegated` 分发字典新增该命令
+       （为什么不用 REMAINDER：本仓 10-10 已实测"以选项开头的区域命令会被主 parser
+       拦下"，统一走分发路径才不会再踩）
+     - 名字用 `parting-baseline`：`parting` 是旧的网格分型命令，已在用、不能顶掉
+  A2 `tests\test_cli_commands.py`：新增用例钉三件事——子命令表里有它、旧 `parting` 仍在、
+     缺 `input` 时报错方必须是 `parting_cli` 自己（证明透传真的生效）
+
+区域 B（任务书口径真值）
+  B1 `src\cad_inspector\learning\evaluation.py`
+     - 新增 `SpecTruth` 数据类与 `threshold_reached_face_ids(...)`：真值走**独立采样**
+       （面内低差异点 9 点/面，第 0 点恒为重心，**外加每面 3 个顶点**；
+       顶点是面内离边界最远的极值候选，缺了它"面上最大误差"会被系统性低估）
+     - `DetectionMetrics` 新增：真值密度与点数、任务书口径真值面数/TP/FP/FN/
+       precision/recall/iou/区域命中、**轮廓带**面数与带内生产误差最大值、
+       "口径内漏检里被面积门限丢掉"的单独计数
+     - `evaluate_synthetic_case(...)` 新增 `truth_samples_per_triangle=9`，
+       并接住原先被丢弃的第 4 个返回值
+     - `evaluate_synthetic_suite(...)` 新增同名参数；报告新增 `spec_conformant`
+       口径块与 `status_spec_conformant`；**不替换** `status`/`aggregate`；
+       `schema_version` 1.2 → **1.3**；`limitations` 新增四类必写说明（见第四节）
+     - 阈值扫描同步带上真值密度与口径块（否则"扫描点在阈值轴变、真值口径在背后变"）
+     - 轮廓带只在缺失方向量：多料方向的反向距离数组没有被检测器返回，
+       我不编一个数补上（多料口径的 spec_* 指标照算，轮廓带留 0/None）
+  B2 `src\cad_inspector\learning\__init__.py`：导出 `SpecTruth`、
+     `threshold_reached_face_ids`、`DetectionMetrics`
+  B3 `src\cad_inspector\cli.py`（evaluate-synthetic）：新增
+     `--truth-samples-per-triangle`（默认 9）、`--samples-per-triangle`、
+     `--min-region-area-mm2`、`--face-corner-check`；不传参时行为与改动前**完全一致**
+  B4 `tests\test_learning_evaluation.py`：新增 5 条用例（先红后绿）：
+     独立密度真值与计数自洽 / 密采样集合只增不减且轮廓带内生产误差必 < 阈值 /
+     本构造下轮廓带确实非空（防空转）/ 两套口径并报且旧 status 与旧 boundary_iou
+     未被顶替 / 限制说明里必须出现"循环"与"轮廓带、采样分辨率"；
+     原 `schema_version == 1.2` 的钉子同步升到 1.3
+
+区域 C（收口杠杆：面级判据补顶点采样，默认关闭）
+  C1 `src\cad_inspector\models.py`：新增 `face_corner_check: bool = False`
+     （默认关闭；`__post_init__` 布尔校验、`from_dict` 走 `_as_bool`，
+     字符串 `"false"` 不会被当成真值）
+  C2 `src\cad_inspector\detection\missing_regions.py`：新增 `_face_corner_distances(...)`，
+     在正向（缺失）与反向（多料）**两个方向**都并入面级最大值——两个方向必须同一套判据，
+     否则"缺失"严格、"多出"宽松，两类结论无法并排比较；打开时同步把"已测面掩码"置为全部，
+     让覆盖率与实际判据一致（默认关闭时这段完全不生效）
+  C3 `src\cad_inspector\cli.py`：`inspect` 与 `evaluate-synthetic` 均新增
+     `--face-corner-check`（用 `is not None` 判断，避免覆盖配置文件里设过的值）
+  C4 `tests\test_sampling_coverage.py`：新增两条用例——开关默认关闭且能从配置打开
+     （含 `"false"` 字符串）；0.2mm 网格上"关着会漏、打开后严格变多、且任务书口径
+     全部达阈值面都被报出"
+
+红-绿证据（本仓约定：先写会失败的用例）
+  - 红 1：6 failed —— 5 条口径用例 + 第五区域入口用例，原因是新 API/参数/子命令都不存在
+    （`AssertionError: 第五个区域命令没挂上：…`、`TypeError: unexpected keyword
+    argument 'truth_samples_per_triangle'` 等）。
+  - 红 2：`TypeError: InspectionConfig.__init__() got an unexpected keyword
+    argument 'face_corner_check'`（顶点采样用例）。
+  - 绿：见第三节 D 段（聚焦回归 49 passed + 产物 glob 用例 14 passed）。
+
+==================================================================
+三、实测证据（命令、产物、数字）
+==================================================================
+A. 区域入口审计
+   产物：`reports\接管续写_区域入口可达性审计_2026-10-25.json`
+   结果：79 模块（不含 `__init__.py`）、零引用只剩 `__main__.py`、子命令 27、
+        五个区域命令全部透传、五个区域 CLI 都有控制台脚本。
+
+B. 真实尺度上的两套口径（训练集/8；seeds 0/200/900/1200 × faces 400/1500/5000；
+   阈值 0.15mm；真值密度 k=9；配准 none；单位 assume_mm；12 个案例全部参与打分）
+   产物（全部是新文件名，未覆盖任何既有证据）：
+     r1 默认生产配置（1 点/面 + 面积门限 0.5）
+        outputs\evaluation\synthetic_real_scale_spec_r1_default_20261025.json
+     r2 只把面积门限调到 0.3
+        outputs\evaluation\synthetic_real_scale_spec_r2_area030_20261025.json
+     r3 只把生产采样提到 4 点/面
+        outputs\evaluation\synthetic_real_scale_spec_r3_prod4_20261025.json
+     c1 只打开面级顶点采样（面积门限仍 0.5）
+        outputs\evaluation\synthetic_real_scale_spec_c1_corner_default_area_20261025.json
+     c2 顶点采样 + 面积门限 0.3
+        outputs\evaluation\synthetic_real_scale_spec_c2_corner_area030_20261025.json
+     汇总：outputs\evaluation\spec_sweep_summary_20261025.json、
+           outputs\evaluation\spec_corner_summary_20261025.json
+     （每轮另有 `_log_spec_*_20261025.txt` 原样日志）
+
+   ┌──────────────────────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
+   │ 指标（任务书口径）        │ r1 默认  │ r2 面积  │ r3 采样  │ c1 顶点  │ c2 顶点  │
+   │                          │          │ 0.3      │ 4 点/面  │ 采样     │ +面积0.3 │
+   ├──────────────────────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+   │ 真值面数（独立密采样）    │ 23902    │ 23902    │ 23902    │ 23902    │ 23902    │
+   │ 命中 TP / 误报 FP         │ 22180/0  │ 22358/0  │ 22672/0  │ 23676/0  │ 23895/0  │
+   │ 漏掉 FN                   │ 1722     │ 1544     │ 1230     │ 226      │ **7**    │
+   │ 精确率 precision          │ 1.000000 │ 1.000000 │ 1.000000 │ 1.000000 │ 1.000000 │
+   │ 面级召回 recall           │ 0.927956 │ 0.935403 │ 0.948540 │ 0.990545 │ **0.999707** │
+   │ IoU                       │ 0.927956 │ 0.935403 │ 0.948540 │ 0.990545 │ 0.999707 │
+   │ 案例级召回 case_recall    │ 0.916667 │ 1.000000 │ 0.916667 │ 0.916667 │ **1.000000** │
+   │ 轮廓带面数                │ 1544     │ 1544     │ 1034     │ **7**    │ 7        │
+   │ 轮廓带内生产误差最大值    │ 0.149976 │ 0.149976 │ 0.149976 │ 0.149264 │ 0.149264 │
+   │ 被面积门限丢掉的面        │ 178      │ 0        │ 196      │ 219      │ 0        │
+   │ 是否达标 target_met       │ False    │ False    │ False    │ False    │ **True** │
+   │ 单轮耗时（秒）            │ 120.2    │ 109.4    │ 237.2    │ 271.6    │ 256.1    │
+   └──────────────────────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
+   注：轮廓带内的"生产误差最大值"列全部**低于**阈值 0.15mm，这是轮廓带的定义性质，
+       也是我用例里钉住的不变量——它证明这些面不是"漏检"，而是"生产采样没采到那个位置"。
+
+   同一批案例在**旧口径**（全部被删面当真值）下的数字，一并列出以便对照：
+     r1：precision 1.000000 / recall 0.803623 / case_recall 0.916667 /
+         area_recall 0.804189 / boundary_iou 0.000000
+     r2：recall 0.810072 / case_recall 1.000000
+     r3：recall 0.821449 / case_recall 0.916667 / boundary_iou 0.001087
+     c1：recall 0.857826 / case_recall 0.916667 / boundary_iou 0.002847
+     c2：recall 0.865761 / case_recall 1.000000 / boundary_iou 0.002847
+   `status` 字段在全部五轮里都保持 `TARGET_NOT_PROVEN`（旧口径六项未同时达标），
+   只有 c2 的 `status_spec_conformant` 变成 `BASELINE_TARGET_MET`。
+   这正是"两套口径并排、互不顶替"的设计效果。
+
+   r1 逐案例（任务书口径）；漏掉的面 = 轮廓带 + 被面积门限丢掉，**每一行都严格相等**：
+     case                       真值 命中 漏掉 轮廓带 面积门限 spec_recall
+     missing;seed=0;faces=400    226  174   52    52      0      0.7699
+     missing;seed=0;faces=1500  1187 1061  126   126      0      0.8939
+     missing;seed=0;faces=5000  4536 4315  221   221      0      0.9513
+     missing;seed=200;faces=400  237  184   53    53      0      0.7764
+     missing;seed=200;faces=1500 1197 1085  112   112      0      0.9064
+     missing;seed=200;faces=5000 4530 4298  232   232      0      0.9488
+     missing;seed=900;faces=400  247  198   49    49      0      0.8016
+     missing;seed=900;faces=1500 1205 1108   97    97      0      0.9195
+     missing;seed=900;faces=5000 4559 4327  232   232      0      0.9491
+     missing;seed=1200;faces=400  220    0  220    42    178      0.0000
+     missing;seed=1200;faces=1500 1208 1084  124   124      0      0.8974
+     missing;seed=1200;faces=5000 4550 4346  204   204      0      0.9552
+   读法：① 归因闭合（不存在第三类漏检）；② 召回随缺失规模上升（400 面 ≈0.77、
+   5000 面 ≈0.95），因为轮廓带宽度由阈值与网格边长决定、缺失越大占比越小；
+   ③ 精确率恒 1.000、误报恒 0——当前是"少报"，不是"乱报"。
+
+   c1 打开顶点采样后，12 个案例里有 10 个的面级召回 ≥0.9912（其中 6 个为 1.0000），
+   唯一仍为 0 的是 seed=1200/faces=400（它的检出面 219 个全部被 0.5mm² 门限丢掉）。
+   c2 把该门限调到 0.3 后，该案例 219/220 命中，全局只剩 7 个面未命中。
+
+C. 最小可读样例（让甲方一眼看懂两套口径怎么算）
+   产物：`reports\接管续写_任务书口径最小样例_2026-10-25.json`
+   样例 1：10mm 立方体、删 2 面、0.15mm：真值面 [0,1]，每面最大误差 3.333333mm，
+           两套口径都判"达阈值且检出"（recall 均为 1.0），轮廓带 0
+   样例 2：0.2mm 平面网格、删 24 面、0.15mm：生产采样下一个面都检不出（重心距离
+           全部 < 0.15mm），而独立密采样（含顶点）判定 **15 个面**确实存在 ≥0.15mm 的点，
+           其中 **7 面**属轮廓带（生产口径下最大 0.149071mm）、**8 面**属"生产判据达阈值
+           但整个区域不足 0.5mm² 被丢掉"（7+8=15，与上表同一套归因）
+
+D. 我实际跑过的校验（都在本机、命令可复现）
+   1) 聚焦回归（含我改动的全部测试文件与相关钉子）：
+      `.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+       tests\test_sampling_coverage.py tests\test_default_config_consistency.py
+       tests\test_taskbook_requirements.py tests\test_cli_commands.py
+       tests\test_learning_evaluation.py`
+      → **49 passed in 73.81s**
+   2) 产物 glob 钉子（它会把 outputs\evaluation 下每个 synthetic_*.json 都检查一遍）：
+      `... tests\test_synthetic_hard_artifact.py` → **14 passed in 0.10s**
+      （这一步真的救过一次：我最初把两份**汇总**文件也命名为 `synthetic_*_summary.json`，
+        被这条 glob 判定为"缺归因字段的旧产物"而红。我改的是**命名**，不是断言。）
+   3) 静态校验（**不用 compileall**，因为它会写 __pycache__，会干扰正在跑的门禁）：
+      产物 `reports\接管续写_静态校验_2026-10-25.json`
+      - 语法检查 `ast.parse`：201 个文件、**0 错误**（等价于 compileall 能抓的语法类问题）
+      - 注释率（口径 0.25）：strict **0.264564**、含行尾 0.265577；
+        总行 43430、严格注释行 11490 → 达标
+      - 定义 docstring 覆盖率 **1.0**、模块 docstring 覆盖率 **1.0**
+      - 产物审计（只读，不覆盖 reports\outputs_audit.json）：**status=PASS**，
+        937 个文件、933 有效、**0 损坏**、4 跳过（跳过的正是我留下的 `_log_spec_*.txt`，
+        该审计器对不解析的后缀只跳过、不判损坏）
+   4) 依赖检查：`.venv\Scripts\python.exe -B -m pip check`
+      → `No broken requirements found.`
+   5) 全量门禁：见第五节（并行门禁正持锁，我如实标注状态）。
+
+==================================================================
+四、口径说明：为什么"同源口径的 1.0"不能当准确率
+==================================================================
+一句话：**预测的依据与真值的来源是同一份数据时，"召回 1.0"只是"程序是确定的"
+的另一种写法**，它对"找得准不准"零证据。本仓就有这种写法留下的 1.0。
+所以我在报告里同时给两套，并把边界写进 `limitations`：
+  1) `aggregate`/`status`：旧口径（全部被删面），保持原样不动；
+  2) `spec_conformant`/`status_spec_conformant`：任务书口径，真值 = 存在 ≥阈值
+     几何误差的面，由**独立密度**（9 点/面 + 3 顶点）量出；
+  3) 明写"同源口径是循环的、不能当准确率"；
+  4) 明写轮廓带面数与它在生产口径下的最大误差（低于阈值），并指出这是采样分辨率
+     差异、不是漏检；轮廓带为空时也必须明写"这一批的漏检不能用采样分辨率解释"；
+  5) 明写任务书口径目前只卡 precision/recall/case_recall 三项，我没有把旧口径的
+     area_*/boundary_iou 借过来凑成六项（那会是两个口径混用）；
+  6) 口径内漏检里"被 min_region_area_mm2 丢掉"的面单独计数（行动是调阈值），
+     与轮廓带（行动是提采样密度）分开。
+验收用哪一套口径，需要甲方书面确认；工程侧只负责把两套都算准、都摆出来。
+
+**关于 c2 那个 0.999707 必须同时说清的两句**：
+  - 它是**对独立更密真值**量出来的（真值 9 点/面 + 3 顶点，检测器只算 1 点/面 + 3 顶点），
+    所以剩下那 7 个面是真实的采样差，不是定义对齐的结果；
+  - 但它也确实**借助了"判据与定义对齐"**（补顶点采样）。对齐之后"召回变好"包含
+    定义性成分，所以我不把它当成工业准确率，只当成"口径内可测量尺子上的结论"。
+    真正独立的准确率证据仍然只有甲方的人工标注，而它目前不存在。
+
+==================================================================
+五、门禁状态与交付校验
+==================================================================
+5.1 本轮门禁的实际状态（不掩饰）
+  - **并行那条线的门禁先跑完了**（我等到它释放锁才动）：`reports\verification_gate.json`
+    的 2026-10-25T15:28:10 快照为 **status=PASS**，明细：
+    `pytest 774 passed in 1166.94s (19:26)`、compileall 通过、
+    `pip check` 干净、产物审计 `936/941 有效、0 损坏、5 跳过（status=PASS）`、
+    收尾缓存 0 个残留。该快照我已另存：
+    `reports\verification_gate_并行完善线_2026-10-25T1528.json`
+    （审计另存 `reports\outputs_audit_并行完善线_2026-10-25T1528.json`）。
+    它更早的那次（10-19 18:28）是 PASS / 747 passed，但 pytest 耗时
+    **16193 秒（4 小时 30 分）**——本机在多智能体并发下会把全量回归拉到这个量级，
+    门禁脚本注释里写的"正常 15~20 分钟"只在没有并发时成立。
+  - **但它不能算我这一轮的最终快照**：它 15:05:27 取锁时，我的源码改动还没写完
+    （最后一次改源码是 15:10:34），所以它自己的报告里
+    `source_changed_during_run=True`（我核过：该字段的指纹只覆盖
+    `src`/`tests`/`scripts` 下的 `*.py` 的 mtime+大小，不覆盖 reports）。
+    我把这条如实抄下：**对方门禁的 PASS 覆盖的是"含我大部分改动、但不是我的最终状态"的快照。**
+  - 因此我在它放锁后**自己重跑了一次门禁**，结果见 5.3。
+
+5.2 我读到的一个门禁脚本缺陷（未修，只报告）
+  `scripts\verify_project.py` 里：给了 `--report X` 时，
+  `audit_target = Path(report_path)`（约 686~691 行）会先把产物审计写进 X，
+  紧接着 `_write_gate_report(report, gate_target)`（约 806~811 行，`gate_target`
+  同样是 X）又把 X 覆盖成门禁报告 → **`--report` 模式下产物审计文件被静默丢掉**。
+  默认路径（不传 `--report`）不受影响，所以平时的门禁看不出这个问题。
+  我**没有**在对方门禁运行期间去改这个脚本（那是另一个区域，而且改它需要重跑门禁
+  才能验证），只把它作为发现上报，建议把审计写到 `report_path` 的同级独立文件名。
+
+5.3 我自己的全量门禁结果（最终快照）
+  命令：`.venv\Scripts\python.exe -B scripts\verify_project.py`（默认路径、串行、自持内核锁）
+  结果：**status=PASS，退出码 0，timestamp=2026-10-25T15:44:22**，六个阶段全绿：
+    - `bytecode_purge`：清理 0 个项目缓存目录
+    - `pytest`：**779 passed in 781.89s (13:01)**，returncode=0、failures 为空
+      （比并行那条线的 774 多 5 条，正是我这一轮新增的用例）
+    - `compileall -q src scripts tests`：returncode=0
+    - `pip check`：`No broken requirements found.`
+    - `outputs_audit`：**936/941 有效、0 损坏、5 跳过、status=PASS**
+    - `cache_cleanup`：清理 22 个缓存目录，剩余 0 个
+    - 同一份报告里的注释率：`total_lines=43430 / strict=11490 / 0.264564 / 含行尾 0.265577`、
+      定义 docstring 覆盖率 **1.0**、模块 docstring 覆盖率 **1.0** → PASS
+      （与我独立算的静态校验**逐位一致**，两条路互验）
+  该报告我已另存（因为并行那条线在 15:45:20 又起了一次门禁，会覆盖默认文件）：
+    `reports\verification_gate_接管续写_2026-10-25T1544.json`
+    `reports\outputs_audit_接管续写_2026-10-25T1544.json`
+  **`source_changed_during_run=true` 这一个字段必须一起读**：我查了原因——
+  门禁运行期间（15:29:41~15:44:22）只有 **`tests\test_extra_annotation_closure.py`
+  在 15:32:06 被改过**（那是并行写入者自己的测试文件，不属于我的写入范围）；
+  我的源码（`src` 下我改的 5 个文件）在整个门禁窗口内**没有任何改动**，
+  最后一次改源码是 15:10:34、远早于门禁取锁的 15:29:41。
+  所以这份 PASS 对应的是"我的最终源码 + 对方当时那个测试文件版本"的快照；
+  对方紧接着 15:45:20 起的又一次门禁会覆盖他们那一侧的版本。
+
+==================================================================
+六、并行写入者与本次证据的时点说明
+==================================================================
+  - 我检测到的事实：本轮工作期间，`src\cad_inspector\learning\annotations.py`（14:57:41）、
+    `annotation_scoring.py`（14:58:22）、`annotation_review.py`（15:03:25）、
+    `tests\test_extra_annotation_closure.py`（14:56:09）、
+    `tests\test_annotation_scoring.py`（14:59:45）、
+    `src\cad_inspector\detection\distance.py`（15:02:24）、
+    `detection\voxel_compare.py`（15:02:32）、`repair\step_hole.py`（15:03:14）、
+    `scripts\build_installer.py` / `refresh_unit_warnings.py` / `import_task_books.py` /
+    `run_real_pair_acceptance.py` / `bootstrap_annotations.py`、`README.md`（15:04:11）、
+    `验收操作手册.md`（15:04:34）等多处在**我这一轮期间被改动**；
+    进程列表里同时存在 WorkBuddy 进程组、另一个 `.venv` 门禁进程与多个 python 进程。
+  - 后果 1（假失败）：我在 14:58 跑的一次子集回归出现 `1 failed`，失败是
+    `TypeError: _validate_region() got an unexpected keyword argument
+    'schema_version'`（对方正在改 `annotations.py`，文件处于半成品状态）；
+    同一用例在 15:00 单独重跑即通过。**这是并发造成的假失败**，不是我的改动引起，
+    也不是稳定的代码缺陷。
+  - 后果 2：本轮 r1/r2/r3/c1/c2 五次实测各自建立在"当时的源码快照"上；
+    它们之间只差我一个显式参数（配置开关），而我的开关改动在 c 轮之前已完成，
+    因此 c1/c2 是同一份代码下的对照，r1~r3 也是；跨轮比较的是**配置**，不是代码版本。
+    门禁脚本自带的 `source_changed_during_run` 字段我会照抄，不掩饰。
+  - 我的处置：写入范围限定在 `learning\evaluation.py`、`learning\__init__.py`、
+    `models.py`、`detection\missing_regions.py`、`cli.py`、
+    `tests\test_learning_evaluation.py`、`tests\test_cli_commands.py`、
+    `tests\test_sampling_coverage.py` 与新文件名的 reports/outputs 证据上；
+    不碰对方的 annotation 系列文件；对 `cli.py` 这种双方都可能改的文件，改完立即复核
+    （实测对方在 15:00:51 也改了 `cli.py`，我的 `parting-baseline` 两处在改动后仍完整）。
+  - 与我互补的另一条线：对方这一轮做的是"多余材料（extra）能标注、能复核、能打分"的
+    闭环（报告：`reports\完整汇报_甲方第一人称_2026-10-25.md`、
+    `reports\完善线_多余材料打分闭环_2026-10-25.md`）。两条线不冲突：
+    对方补的是 extra 这一类结论"算得出来"，我补的是 missing 这一类结论"按任务书口径
+    算得准不准、还差什么"。两份报告都应读，且它们对"真实 99% 仍缺人工标注"的判断一致。
+
+==================================================================
+七、我保留未做的（不假装已做）
+==================================================================
+1. **≥99% 在真实语料上仍无结论**：真实件只有 3 个区域、无人工标注。c2 的 0.999707
+   是**合成口径 + 两个开关打开**下的数字，不能替代真实验收。
+2. **两个开关的默认值我一个都没改**：`face_corner_check` 默认关闭、
+   `min_region_area_mm2` 默认仍 0.5。它们是验收口径/默认行为变更，须甲方书面确认；
+   我只把开关、代价（约 2.1~2.3 倍距离查询量）与收益（面级召回 0.9280 → 0.9997）量出来。
+3. **multi-面级判据补顶点只做到"可选"**，没有做"只对轮廓带附近的面补顶点"这种
+   更省算力的折中（那需要按阈值与局部尺度自适应，属于新算法，本轮不动）。
+4. **boundary_iou**：默认配置下仍是 0.000000（预测集合整体落在缺口内部、不接触边界，
+   边界边集合无交集），打开顶点采样后升到 0.002847——这是指标灵敏度的结果，
+   我如实保留，没有把它包装成"边界完全正确"。
+5. **真实人工标注、训练集/1 的内存、XT/PRT 原生解析、GUI、工业 G0/G1/G2**：
+   都是既有未完成项，本轮未碰。
+6. **第二个任务书（基于3D文件的曲率复杂变化区域检索）**：不在本目录范围内
+   （其代码在 D:\CADFeatureRecognition），本轮未碰。
+
+==================================================================
+八、给甲方的决策清单（每条都带上我的证据位置）
+==================================================================
+1. 验收口径选哪一套：`aggregate/status`（全部被删面）还是
+   `spec_conformant/status_spec_conformant`（误差 ≥ 阈值）？
+   证据：第三节 B 表格（两套并排）。
+2. 面级判据是否补顶点采样（打开 `face_corner_check`）？
+   收益：面级召回 0.9280 → 0.9905、轮廓带 1544 → 7 面；
+   代价：单轮 120.2 → 271.6 秒（约 2.26 倍距离查询量）。
+   证据：`synthetic_real_scale_spec_c1_corner_default_area_20261025.json`。
+3. `min_region_area_mm2` 是否从 0.5 下调到 0.3？
+   收益：案例级召回 0.9167 → 1.0000（那一例实测 0.380411mm²）；
+   风险：更小的噪声区会被报出——本次 12 例未出现误报（FP 恒为 0），
+   但真实件上需要看彩色网格复核。证据：
+   `synthetic_real_scale_spec_r2_area030_20261025.json`、
+   `synthetic_real_scale_spec_c2_corner_area030_20261025.json`。
+4. 两项同时打开后，任务书口径达到 precision 1.000 / 面级 0.999707 / 案例级 1.0000
+   （`status_spec_conformant=BASELINE_TARGET_MET`），代价约 2.13 倍耗时。
+   这条是否作为"合成尺子上的达标证据"接受，需甲方书面确认，并同时接受
+   第七节第 1 条的边界（真实语料仍无结论）。
+
+==================================================================
+九、本轮产物清单（全部可复算）
+==================================================================
+代码/测试：
+  src\cad_inspector\learning\evaluation.py、learning\__init__.py、
+  src\cad_inspector\models.py、src\cad_inspector\detection\missing_regions.py、
+  src\cad_inspector\cli.py、tests\test_learning_evaluation.py、
+  tests\test_cli_commands.py、tests\test_sampling_coverage.py
+证据（reports）：
+  接管续写_区域入口可达性审计_2026-10-25.json
+  接管续写_任务书口径最小样例_2026-10-25.json
+  接管续写_静态校验_2026-10-25.json
+  verification_gate_接管续写_2026-10-25T1544.json（我的全量门禁，PASS）
+  outputs_audit_接管续写_2026-10-25T1544.json（同一次门禁的产物审计）
+  verification_gate_并行完善线_2026-10-25T1528.json（并行那条线的门禁，PASS，另存备查）
+  outputs_audit_并行完善线_2026-10-25T1528.json
+  本文
+证据（outputs\evaluation）：
+  synthetic_real_scale_spec_r1_default_20261025.json
+  synthetic_real_scale_spec_r2_area030_20261025.json
+  synthetic_real_scale_spec_r3_prod4_20261025.json
+  synthetic_real_scale_spec_c1_corner_default_area_20261025.json
+  synthetic_real_scale_spec_c2_corner_area030_20261025.json
+  spec_sweep_summary_20261025.json、spec_corner_summary_20261025.json
+  _log_spec_*_20261025.txt（五份原样日志）

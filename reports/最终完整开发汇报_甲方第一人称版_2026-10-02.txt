@@ -1,0 +1,494 @@
+枕型模具部件智能分型设计与 STP/STL 缺失区域识别
+最终完整开发汇报
+甲方第一人称版
+
+一、我方结论
+
+我已把当前项目完整放置在：
+
+D:\STP_STL_Missing_Region_Recognition
+
+我已在 D 盘项目虚拟环境中完成代码、测试、真实 STEP 后端验证、全目录格式探测、输出整理和多轮问题排查。当前工程可以稳定运行，核心几何检测、STEP B-Rep 拓扑报告、STEP 三角化、双向缺失/多余材料检测、网格质量检查、简单孔洞修补、数据集清单、基础分型线和基础分型面均已有可运行入口。
+
+我不把当前结果包装成最终工业级自动分型产品。最终工业级 B-Rep 分型线、IGS/IGES 或 STEP 分型面、XT/PRT 原生读取、GUI、NX Open/Parasolid 商业授权适配和真实甲方准确率验收仍然需要后续接入。
+
+二、实际工程位置
+
+1. 主工程：
+   D:\STP_STL_Missing_Region_Recognition
+2. 源码：
+   D:\STP_STL_Missing_Region_Recognition\src
+3. 测试：
+   D:\STP_STL_Missing_Region_Recognition\tests
+4. 脚本：
+   D:\STP_STL_Missing_Region_Recognition\scripts
+5. 配置：
+   D:\STP_STL_Missing_Region_Recognition\configs
+6. 最终输出：
+   D:\STP_STL_Missing_Region_Recognition\outputs
+7. 甲方原始 CAD：
+   D:\STP_STL_Missing_Region_Recognition\data\raw
+8. 开发过程日志：
+   D:\STP_STL_Missing_Region_Recognition\开发记录.txt
+   D:\STP_STL_Missing_Region_Recognition\reports\开发过程记录.txt
+
+三、我已经实现的能力
+
+1. 我支持 ASCII STL 和 Binary STL 读取。
+2. 我拒绝空文件、截断文件、结构不完整文件、越界面索引、NaN、Inf 和全部退化网格。
+3. 我输出顶点数、三角面数、重复三角面、退化面、非流形边、边界边、孤立顶点、面积和包围盒质量报告。
+4. 我支持质心、PCA 和基础 ICP 配准入口，并记录旋转、平移、尺度、残差和配准质量。
+5. 我支持参考模型到待检测模型的缺失材料候选识别。
+6. 我支持待检测模型到参考模型的多余材料候选识别。
+7. 我使用三角面共享边聚类连续异常区域。
+8. 我记录区域中心、包围盒、面积、误差、置信度、三角面编号和复核状态。
+9. 我在 STEP 三角化网格存在 Face 映射时输出候选侧和参考侧 STEP Face 编号。
+10. 我输出 JSON、CSV、PLY 和中间距离文件。
+11. 我使用 trimesh/R-tree 加速可用的三角片最近点查询，并保留 SciPy KD-tree 和 NumPy 精确后端。
+12. 我将输入质量告警与距离加速解耦：质量问题不会被隐藏，仍会把结论升级为 review。
+13. 我支持真实 STEP B-Rep 拓扑统计和有效性检查。
+14. 我支持 STEP 转 STL。
+15. 我支持简单、近似平面、默认凸形孔洞的安全修补基线。
+16. 我支持全目录 CAD 文件探测和 SHA256 数据集清单。
+17. 我支持 STL 网格水平截面分型线基线。
+18. 我支持矩形平面分型面基线。
+19. 我支持上下平面、水平面、侧壁和包围盒等网格特征基线。
+20. 我保留可选学习接口，但没有让未经训练的模型参与正式判定。
+
+四、我使用的软件和工具
+
+我当前 D 盘虚拟环境的实际版本如下：
+
+1. Python 3.12.10
+2. NumPy 2.5.3
+3. SciPy 1.18.1
+4. trimesh 5.1.0
+5. rtree 1.4.1
+6. pytest 9.1.1
+7. OCP 8.0.1.0
+8. cadquery-ocp 8.0.1.0.0
+
+我在工程依赖中保留或说明：
+
+1. `numpy`：数组和核心几何计算。
+2. `scipy`：KD-tree 和数值计算。
+3. `trimesh`：三角网格和 R-tree 距离查询。
+4. `rtree`：三角片空间索引。
+5. `cadquery-ocp`：STEP/B-Rep 读取和三角化。
+6. `pytest`：自动化测试。
+7. `open3d`：后续可选三维处理。
+8. `pydantic`：后续接口校验，可选。
+9. PyTorch/PyTorch3D：后续训练模型，不作为当前基线依赖。
+
+我没有伪造 XT 和 PRT 的直接读取能力：
+
+1. XT 需要 Parasolid SDK 或商业适配器。
+2. Siemens NX PRT 需要 NX Open、NX 授权环境或合规转换流程。
+3. 我当前只探测 PRT 并输出 UNSUPPORTED/PRT_ADAPTER_REQUIRED。
+
+五、分阶段完成情况
+
+阶段一：项目迁移和目录冻结
+
+我已完成：
+
+1. 将工程、脚本、测试、配置和输出统一放在 D 盘。
+2. 保留甲方原始 CAD，不修改原始输入。
+3. 建立 `src`、`tests`、`scripts`、`configs`、`outputs`、`reports` 和 `data` 目录。
+4. 建立 UTF-8 TXT 开发记录机制。
+
+阶段二：输入与网格安全边界
+
+我已完成：
+
+1. 空 STL、截断 Binary STL、截断 ASCII STL 和伪装 Binary STL 测试。
+2. NaN、Inf、越界索引、空网格和退化网格测试。
+3. 非流形、重复面和孤立顶点质量告警。
+4. 输入文件存在性、扩展名和大小边界检查。
+
+阶段三：几何检测基线
+
+我已完成：
+
+1. 质心和基础配准。
+2. 双向表面距离。
+3. 缺失区域和多余区域。
+4. 区域面积、误差、置信度和复核标记。
+5. 采样覆盖率门禁。
+6. 距离后端一致性回归。
+
+阶段四：STEP/B-Rep 支持
+
+我已完成：
+
+1. OCP STEP 读取。
+2. Shape 空值检查。
+3. BRepCheck 有效性检查。
+4. Solid、Shell、Face、Wire、Edge、Vertex 统计。
+5. STEP 单位识别。
+6. STEP 三角化和 Face 到三角面映射。
+7. STEP 转 STL 工具。
+
+阶段五：修补、分型和数据登记
+
+我已完成：
+
+1. 简单平面孔洞的安全修补基线。
+2. 非平面、非凸、多孔洞和非流形边界的 review 路径。
+3. 水平截面分型线基线。
+4. 矩形平面分型面基线。
+5. CAD 文件递归扫描。
+6. SHA256 数据集清单 JSON/CSV。
+
+阶段六：回归和清理
+
+我已完成：
+
+1. 全量自动化测试。
+2. 编译检查。
+3. 真实 STEP 拓扑检查。
+4. 真实 STEP 同源比对。
+5. 全目录格式探测。
+6. 极端输入专项测试。
+7. 重复输出清理。
+
+六、真实 BOTTLE.stp 验证
+
+我使用的原始文件：
+
+D:\STP_STL_Missing_Region_Recognition\data\raw\模具零件加工面智能拆解与分类(1)\004-模具-1升水瓶模具  step\BOTTLE.stp
+
+我执行的拓扑命令：
+
+.\.venv\Scripts\python.exe run_inspector.py step-report `
+  "D:\STP_STL_Missing_Region_Recognition\data\raw\模具零件加工面智能拆解与分类(1)\004-模具-1升水瓶模具  step\BOTTLE.stp" `
+  --output outputs\step_final\BOTTLE_step_topology.json
+
+实际结果：
+
+1. status：COMPLETE
+2. backend：OCP
+3. unit：mm
+4. shape_is_null：false
+5. shape_is_valid：true
+6. Solid：1
+7. Shell：14
+8. Face：311
+9. Wire：311
+10. Edge：85643
+11. Vertex：171286
+12. warnings：空
+13. errors：空
+
+最终拓扑证据：
+
+D:\STP_STL_Missing_Region_Recognition\outputs\step_final\BOTTLE_step_topology.json
+
+七、真实 STEP 同源比对
+
+我使用同一个 BOTTLE.stp 同时作为候选和参考，检查流程是否会在同源输入下产生几何缺失或多余材料。
+
+我执行的命令：
+
+.\.venv\Scripts\python.exe run_inspector.py inspect `
+  "BOTTLE.stp" `
+  "BOTTLE.stp" `
+  --config configs\default.json `
+  --output-dir outputs\real_step_validation\step_same_v2
+
+实际结果：
+
+1. missing_area_mm2：0.0
+2. extra_area_mm2：0.0
+3. missing_region_count：0
+4. extra_region_count：0
+5. reference_sampling_coverage_ratio：1.0
+6. candidate_sampling_coverage_ratio：1.0
+7. max_error_mm：约 2.89e-8
+8. mean_error_mm：约 3.38e-13
+9. bbox_scale_ratios：1.0、1.0、1.0
+10. registration quality：good
+11. 结果没有发现同源缺失或多余材料。
+
+最终同源比对结果：
+
+D:\STP_STL_Missing_Region_Recognition\outputs\real_step_validation\step_same_v2\result.json
+D:\STP_STL_Missing_Region_Recognition\outputs\real_step_validation\step_same_v2\regions.csv
+D:\STP_STL_Missing_Region_Recognition\outputs\real_step_validation\step_same_v2\colored_reference.ply
+D:\STP_STL_Missing_Region_Recognition\outputs\real_step_validation\step_same_v2\intermediate_face_distances.json
+
+我将该结果状态保留为 `review`，不是 `pass`，原因是三角化网格质量报告发现：
+
+1. 重复三角面：198
+2. 非流形边：1998
+3. 边界边：1991
+
+这表示几何距离结果没有检测到同源差异，但输入三角片质量仍需要甲方确认。我不会为了得到 pass 而隐藏质量风险。
+
+八、全目录数据探测
+
+我扫描的目录：
+
+D:\STP_STL_Missing_Region_Recognition\data\raw
+
+实际结果：
+
+1. total：14
+2. complete：10
+3. partial：0
+4. unsupported：4
+5. failed：0
+6. STEP：10
+7. Siemens NX PRT：4
+8. 失败文件：0
+
+最终探测证据：
+
+D:\STP_STL_Missing_Region_Recognition\outputs\probe_final\batch_summary.json
+D:\STP_STL_Missing_Region_Recognition\outputs\probe_final\batch_summary.csv
+
+我生成的数据集清单：
+
+D:\STP_STL_Missing_Region_Recognition\outputs\dataset_final.json
+D:\STP_STL_Missing_Region_Recognition\outputs\dataset_final.csv
+
+九、极端测试和问题排查
+
+我已执行全量测试：
+
+.\.venv\Scripts\python.exe -m pytest -q
+
+结果：
+
+74 passed in 13.36s
+
+我已执行编译检查：
+
+.\.venv\Scripts\python.exe -m compileall -q src scripts tests
+
+结果：
+
+通过。
+
+我额外执行的极端专项：
+
+1. 空文件。
+2. 截断 Binary STL。
+3. 截断 ASCII STL。
+4. Header 以 solid 开头的 Binary STL。
+5. NaN 顶点。
+6. Inf 顶点。
+7. 全退化三角面。
+8. 空网格。
+9. 非有限查询点。
+10. 采样上限过小。
+11. KD-tree candidate_k 为 1、2、64 和 10000。
+12. 距离后端与暴力基线一致性。
+13. 大平移。
+14. 尺度变化。
+15. 非平面孔洞。
+16. 非凸孔洞。
+17. 多孔洞。
+18. 非流形边界。
+19. 超大距离查询批次。
+20. 损坏 STEP。
+21. 非 UTF-8 STEP。
+22. 缺少 STEP Section。
+23. 空目录批量探测。
+24. 重复路径批量探测。
+25. 非法阈值 NaN。
+26. 非法三角化参数 Inf。
+27. 超过输入大小上限。
+28. 双向同时出现缺失和多余材料。
+29. STEP Face 映射。
+30. CSV 字段完整性。
+31. step-report 命令分发。
+32. 真实 BOTTLE 大网格完整距离链路。
+33. 真实 BOTTLE B-Rep 分型命令，扫描 3 个高度并输出 11 个候选。
+34. 真实 BOTTLE 分型结果重复运行的语义字段一致性。
+35. 旧版 `cad-inspector parting` 输入 SHA256、格式和文件元数据回归。
+
+十、我发现并修复的问题
+
+问题一：历史报告把 OCP 写成未安装
+
+我重新安装并确认了 D 盘虚拟环境中的 `cadquery-ocp 8.0.1.0.0` 和 OCP 8.0.1.0。真实 BOTTLE.stp 已通过 B-Rep 读取、拓扑统计和三角化。
+
+问题二：区域结果只有三角面编号
+
+我为区域结果增加候选侧和参考侧 STEP Face 编号映射。STL 没有可靠 CAD Face ID 时，我保持字段为空，不伪造编号。
+
+问题三：真实大网格距离查询过慢
+
+原路径在质量问题存在时过度退化到保守 KD-tree，真实 12.5 万三角面输入耗时不可接受。我实测 trimesh/R-tree 可以对这类三角片集合进行有效最近点查询，因此解除不必要的加速禁用。质量问题继续由上层标记 review。
+
+问题四：Windows 转换脚本中文输出乱码
+
+我在 STEP 转 STL 脚本中加入 UTF-8 标准输出重配置，减少 Windows 控制台乱码。
+
+问题五：命令行数据清单参数误用
+
+我第一次使用了不存在的 `--csv` 参数。项目真实设计是通过 `--output xxx.json` 自动生成同名 `xxx.csv`。我已按真实接口重新执行并验证 JSON/CSV 均成功生成，并把该操作限制写入日志。
+
+问题六：重复输出占用空间
+
+我删除了：
+
+1. outputs\real_step_validation\same_source_v2
+2. outputs\real_smoke
+3. outputs\probe_all_real
+4. outputs\parting_bottle_candidate_v2_repeat
+5. 项目根 .pytest_cache
+6. src、tests、scripts 下本轮生成的 __pycache__
+
+问题七：旧版分型入口的审计元数据为空
+
+我发现 `cad-inspector parting` 旧入口仍然写入空的 `input_metadata`，并且总状态只检查分型面。我已补充统一输入校验、SHA256、文件格式元数据，并要求分型线和分型面同时满足基线条件。
+
+问题八：专用分型命令在 Windows 控制台中文乱码
+
+我在 `parting_cli` 中补充 UTF-8 标准输出和错误输出配置。真实 BOTTLE 命令复跑后，中文状态信息显示正常。
+
+本轮真实 BOTTLE 分型证据：
+
+1. 输出目录：`outputs\parting_bottle_candidate_v2`
+2. 状态：`BASELINE`
+3. JSON schema：`parting-1.2`
+4. 候选分型线：11 个
+5. 输入格式：STEP
+6. 输入 SHA256：`41979f09da77a5efc280b9f3e8ee1e74e206d88ac9f93ead6ff8226199148cf8`
+7. 输出：JSON、候选 JSON、CSV、IGS 分型线、STEP/IGS 分型面和 STL 审计面
+8. 独立目录重复运行后，状态、输入元数据、候选、分型面、警告和配置字段完全一致。
+
+这些目录均为可由现有命令重新生成的重复或旧版证据。删除前我校验了绝对路径均位于项目根目录内。
+
+十一、当前保留的限制
+
+1. STL 通常没有可靠单位，我不能仅凭 STL 文件承诺毫米级准确率。
+2. 当前结果采用无符号表面距离和双向表面检查，不能单独证明实体体积布尔差异。
+3. 三角化分辨率必须小于甲方验收阈值，否则必须人工复核。
+4. 真实 BOTTLE 三角化结果存在重复三角面和非流形边，当前输出必须 review。
+5. `review` 不等于失败，也不等于通过；它表示证据不足或质量风险需要人工复核。
+6. 当前分型线和分型面仍属于网格 baseline，不是最终 B-Rep 工程分型。
+7. 尚未输出最终工业级 IGS/IGES 分型线或 STEP 分型面。
+8. 尚未直接读取 Parasolid XT。
+9. 尚未直接读取 NX PRT。
+10. 尚未完成 GUI、安装包、服务化 API 和权限体系。
+11. 尚未用甲方完整标注集计算准确率、召回率、误报率和漏报率。
+12. 当前 74 项测试证明工程可运行，不等于 99% 工业验收。
+13. 合成数据只能验证流程，不可替代真实业务准确率。
+
+十二、甲方后续验收标准
+
+我建议甲方提供并冻结以下材料：
+
+1. 至少 25 组训练样本。
+2. 至少 25 组独立测试样本。
+3. 每组完整参考 CAD。
+4. 每组待检测破损 CAD 或 STL。
+5. 缺失区域真实标注。
+6. 单位、坐标系和姿态说明。
+7. 允许误差、最小可检面积和最小可检深度。
+8. 薄壁、内腔、尖角、R 角和非流形输入规则。
+9. XT/PRT 的授权转换方案。
+10. 最终分型线和分型面的人工验收样例。
+
+我建议验收指标至少包含：
+
+1. 区域级召回率。
+2. 区域级精确率。
+3. 面积误差。
+4. 最大位置误差。
+5. 误报面积。
+6. 漏报面积。
+7. 单文件运行时间。
+8. 内存峰值。
+9. 单位和坐标错误拦截率。
+10. 损坏文件拒绝率。
+
+十三、我方推荐的后续开发顺序
+
+1. 先冻结真实训练集、测试集和标注格式。
+2. 先完成单位、坐标系、尺度和姿态验收。
+3. 再增加有向距离、体素占用和截面辅助证据。
+4. 再完成 B-Rep 面类型、边界和拓扑语义识别。
+5. 再完成真正的工程分型线规则和桥接规则。
+6. 再完成平整分型面、延伸面和过渡曲面。
+7. 再接入 B-Rep 相交检查和输出实体有效性检查。
+8. 再按授权条件接入 XT/PRT。
+9. 最后开发 GUI、批处理、安装包和权限管理。
+10. 只有真实测试集达标后，才允许把结果写成正式准确率承诺。
+
+十四、最终可重复命令
+
+进入项目：
+
+cd D:\STP_STL_Missing_Region_Recognition
+
+运行全量测试：
+
+.\.venv\Scripts\python.exe -m pytest -q
+
+运行编译检查：
+
+.\.venv\Scripts\python.exe -m compileall -q src scripts tests
+
+运行真实 STEP 拓扑报告：
+
+.\.venv\Scripts\python.exe run_inspector.py step-report `
+  "D:\STP_STL_Missing_Region_Recognition\data\raw\模具零件加工面智能拆解与分类(1)\004-模具-1升水瓶模具  step\BOTTLE.stp" `
+  --output outputs\step_final\BOTTLE_step_topology.json
+
+运行全目录探测：
+
+.\.venv\Scripts\python.exe run_inspector.py probe data\raw --batch --output-dir outputs\probe_final
+
+运行数据集清单：
+
+.\.venv\Scripts\python.exe -m cad_inspector.dataset_cli data\raw --output outputs\dataset_final.json
+
+十五、最终状态
+
+我确认当前项目已经达到“可运行、可测试、可追踪、明确边界”的工程基线。
+
+我确认当前项目还没有达到“无需人工复核的工业级自动分型和 99% 准确率承诺”。
+
+我会以本报告、最终输出目录和两份开发记录作为当前版本的正式依据。早期报告中的测试数量、OCP 安装状态和真实 STEP 能力描述如果与本报告冲突，以本报告和最终输出文件为准。
+
+===== 2026-10-03 当前终态校正 =====
+
+我方以当前 D 盘源码重新生成正式工程输出，工程 schema 为
+`step-engineering-features-1.9`。BOTTLE 为 `BASELINE`、311 Face、444 候选、141
+区域；mould_04 为 `REVIEW_REQUIRED`、4974 Face、9290 候选、1393 区域；两套
+Face 覆盖完整，区域 CSV 为 30 列。
+
+我方完成 STEP 修补专项 `4 passed`、全量无缓存回归 `170 passed in 51.79s`、
+`compileall`、`pip check` 和 29/29 outputs 审计；清理脚本释放 236651 字节。当前
+仍未完成 XT/PRT、真实准确率、工业性能、最终封闭分型面、G1/G2、GUI、安装包和
+生产验收。
+
+===== 2026-10-06 主边界 Wire 投影面积交叉校验与清理终检索引 =====
+
+上一条 `step-engineering-features-1.9` 和 `170 passed` 是历史快照。我方当前
+阶段 3/工程 schema 为 `step-feature-classification-1.8` 和
+`step-engineering-features-2.3`，工程区域 CSV 为 44 列，全量测试 `209 passed`，
+outputs audit `30/30 PASS`，清理可再生成日志释放 `65,481,405` 字节。
+
+详细记录见 `reports\甲方第一人称版_主边界Wire投影面积校验与清理终检_2026-10-06.txt`。
+
+===== 2026-10-06 边界环层级与 CSV 上限收口索引 =====
+
+我方本轮完成闭合环层级、孔洞候选、相交环冲突、47 列区域 CSV 和 CSV 单元格上限修复。
+阶段 3/工程 schema 为 `step-feature-classification-1.9` 和
+`step-engineering-features-2.4`，全量测试 `225 passed`，outputs audit `30/30 PASS`。
+
+详细记录见 `reports\甲方第一人称版_边界环层级与CSV上限收口_2026-10-06.txt`。
+
+===== 2026-10-06 D 盘空间收口与无用文件排查索引 =====
+
+我方本轮按甲方要求做 D 盘空间收口：复核白名单清理脚本，确认可再生成输出命中 0 项、
+项目缓存目录 0，并用统一门禁清理 40 个字节码缓存。项目本体合计约 2,174.73 MiB，
+其中 data 1,351.56 MiB、.venv 688.85 MiB、outputs 132.63 MiB，均为受保护内容。
+桌面 rar 压缩包因本机缺少解压工具未核对，仅登记不删。D 盘可用约 178.44 GiB。
+
+详细记录见 `reports\甲方第一人称版_D盘空间收口与无用文件排查_2026-10-06.txt`。

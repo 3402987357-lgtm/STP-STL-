@@ -1,0 +1,51 @@
+[
+  {
+    "case": "0.2mm 平面网格 / 删 24 面 / 阈值 0.15mm",
+    "truth_samples_per_triangle": 1,
+    "deleted_face_count": 24,
+    "predicted_face_count": 0,
+    "legacy_recall": 0.0,
+    "spec_truth_face_count": 15,
+    "spec_true_positive": 0,
+    "spec_false_negative": 15,
+    "spec_recall": 0.0,
+    "contour_band_face_count": 7,
+    "contour_band_production_max_distance_mm": 0.14907119849998604,
+    "spec_false_negative_area_filtered_face_count": 8
+  },
+  {
+    "case": "0.2mm 平面网格 / 删 24 面 / 阈值 0.15mm",
+    "truth_samples_per_triangle": 9,
+    "deleted_face_count": 24,
+    "predicted_face_count": 0,
+    "legacy_recall": 0.0,
+    "spec_truth_face_count": 15,
+    "spec_true_positive": 0,
+    "spec_false_negative": 15,
+    "spec_recall": 0.0,
+    "contour_band_face_count": 7,
+    "contour_band_production_max_distance_mm": 0.14907119849998604,
+    "spec_false_negative_area_filtered_face_count": 8
+  },
+  {
+    "case": "10mm 立方体 / 删 2 面 / 阈值 0.15mm",
+    "truth_samples_per_triangle": 9,
+    "deleted_face_count": 2,
+    "truth_face_ids": [
+      0,
+      1
+    ],
+    "truth_per_face_max_distance_mm": [
+      3.333333,
+      3.333333
+    ],
+    "reached_face_ids": [
+      0,
+      1
+    ],
+    "sample_point_count": 24,
+    "legacy_recall": 1.0,
+    "spec_recall": 1.0,
+    "contour_band_face_count": 0
+  }
+]

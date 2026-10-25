@@ -1,0 +1,70 @@
+我方输出审计器 PLY 与 JSON 假阳性修复记录
+日期：2026-10-06
+项目根目录：D:\STP_STL_Missing_Region_Recognition
+
+一、我为什么要做这件事
+
+我方在复核 io\artifact_audit.py 时发现，审计器会对"完全合法"的输出文件误报
+INVALID。审计器的职责是把真正损坏的输出挡下来，一旦它把合法文件也判成坏的，
+甲方就会在"审计不通过"上浪费人工，或者干脆不信任审计结论，这比漏检更伤信任。
+
+我实测确认了两类假阳性，都在 _audit_ply 里：
+
+1. CRLF 行尾的 ASCII PLY。原实现只判断 header.startswith("ply\n")，
+   而 Windows 工具导出的 PLY 常用 \r\n，于是合法的 PLY 被判"缺少有效头部"。
+2. 二进制 PLY。原实现把前 4096 字节整体按 ASCII 严格解码，二进制载荷里的
+   高位字节直接触发 UnicodeDecodeError，被审计器当成文件损坏。
+
+我用最小复现脚本确认过：一个 CRLF 的 ASCII PLY 和一个只含 1 个顶点的合法
+二进制 PLY，都会被判 INVALID，整体状态变成 REVIEW_REQUIRED。
+
+二、我方怎么改
+
+我把 _audit_ply 从"先解码成文本再判断"改成"按字节判断"：
+
+1. 打开文件读前 64 KiB（常量 _PLY_HEADER_SCAN_BYTES），不做任何解码；
+2. 头部必须精确以 b"ply\n" 或 b"ply\r\n" 开头，两种行尾都接受；
+3. 在这段前缀里查找 b"end_header"，找不到才判 INVALID。
+
+这样二进制载荷永远不会被解码，CRLF 也不再被误判。头部扫描上限我写成
+64 KiB，并留了一条 ponytail 注释说明：常见 PLY 头远小于这个数，只有
+上千个 property 的超大头部才需要再调大。
+
+同一轮里我发现 _audit_json 用 utf-8 读取，而 Windows 工具常写出带 UTF-8 BOM
+的 JSON，json.loads 会直接抛 "Unexpected UTF-8 BOM"。我把读取编码改成
+utf-8-sig：文件带 BOM 时自动去掉，不带 BOM 时行为与 utf-8 完全一致，
+不会放宽任何真正的结构校验。
+
+三、我执行的验证
+
+我在 tests\test_artifact_audit.py 新增三条用例：
+
+1. test我方审计接受CRLF与二进制PLY：两种合法 PLY 都判 VALID，整体 PASS；
+2. test我方审计拒绝缺少头部的PLY：以 "not-a-ply" 开头的文件仍判 INVALID；
+3. test我方审计容忍带BOM的合法JSON：带 BOM 的合法 JSON 判 PASS 并记录 schema。
+
+命令与结果：
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_artifact_audit.py
+-> 13 passed
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_artifact_audit.py tests\test_output_atomic.py
+tests\test_output_reproducibility.py
+-> 22 passed
+
+.venv\Scripts\python.exe -B -m pytest -q -p no:cacheprovider
+tests\test_cli_commands.py tests\test_cli_import.py
+tests\test_artifact_audit.py tests\test_verify_project_gate.py
+-> 24 passed
+
+四、我保留的限制
+
+1. 我只改了审计器的读取路径，没有改任何检测算法、阈值或正式输出格式，
+   所以正式输出不需要重生成。
+2. 我按字节判定 PLY 头部，但不逐字段校验 PLY 的元素计数与数据长度；
+   要更严格时可以再加顶点数/面数与实际数据量的一致性检查。
+3. 本目录仍有并行写入者，结论只对我改动时的源码快照成立。
+4. 我仍不宣称甲方真实标注 99% 准确率、1% 漏检率、3 分钟性能、XT/PRT 原生解析、
+   工业 G0/G1/G2、GUI、安装包或生产验收。
